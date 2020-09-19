@@ -89,10 +89,6 @@ pub fn apply_null_move(b : &Board) -> Board {
 }
 
 pub fn apply_move(b : &Board, m : Move) -> Board {
-    return apply_move_with_promotion(b, m, PieceType::Queen);
-}
-
-pub fn apply_move_with_promotion(b : &Board, m : Move, promote_type : PieceType) -> Board {
     let mut board = *b;
 
     // first, clear all the from squares and the to squares on our bitboard
@@ -140,11 +136,16 @@ pub fn apply_move_with_promotion(b : &Board, m : Move, promote_type : PieceType)
         _ => { }
     };
 
-    // if a pawn reaches the back rank, promote it
-    let back_rank_bitboard = if piece.color == Color::White {bitboard::RANK_8} else {bitboard::RANK_1};
-    if (piece.piece_type == PieceType::Pawn) && ((to_bitboard & back_rank_bitboard) != 0) {
-            piece.piece_type = promote_type;
+    // Promote pieces
+    if (m.promote_type != PieceType::Null) {
+        piece.piece_type = m.promote_type;
     }
+    // TODO: do we actually need to support this? well-formed UCI should include the promote type
+    // let back_rank_bitboard = if piece.color == Color::White {bitboard::RANK_8} else {bitboard::RANK_1};
+    // if (piece.piece_type == PieceType::Pawn) && ((to_bitboard & back_rank_bitboard) != 0) {
+    //         piece.piece_type = promote_type;
+    // }
+
 
     // next, let's set the bitboard for where it moved to
     match (piece.color, piece.piece_type) {
@@ -199,19 +200,19 @@ pub fn apply_move_with_promotion(b : &Board, m : Move, promote_type : PieceType)
         // to properly handle that we simply recurse to generate a pseudo-rook-move prior to returning
         match (m.from_square, m.to_square) {
             (Square::E1, Square::G1) => {
-                let rook_move = Move {from_square: Square::H1, to_square: Square::F1};
+                let rook_move = Move {from_square: Square::H1, to_square: Square::F1, promote_type: PieceType::Null};
                 board = apply_move(&board, rook_move);
             }
             (Square::E1, Square::C1) => {
-                let rook_move = Move {from_square: Square::A1, to_square: Square::D1};
+                let rook_move = Move {from_square: Square::A1, to_square: Square::D1, promote_type: PieceType::Null};
                 board = apply_move(&board, rook_move);
             }
             (Square::E8, Square::G8) => {
-                let rook_move = Move {from_square: Square::H8, to_square: Square::F8};
+                let rook_move = Move {from_square: Square::H8, to_square: Square::F8, promote_type: PieceType::Null};
                 board = apply_move(&board, rook_move);
             }
             (Square::E8, Square::C8) => {
-                let rook_move = Move {from_square: Square::A8, to_square: Square::D8};
+                let rook_move = Move {from_square: Square::A8, to_square: Square::D8, promote_type: PieceType::Null};
                 board = apply_move(&board, rook_move);
             }
             _ => { }

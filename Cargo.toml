@@ -1,5 +1,5 @@
 [package]
-name = "goldychess_rust"
+name = "goldychess"
 version = "0.1.0"
 authors = ["Michael Goldstein <michael@mgold.io>"]
 edition = "2018"

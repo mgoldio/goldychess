@@ -113,7 +113,8 @@ pub struct Board {
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Move {
     pub from_square: Square,
-    pub to_square: Square
+    pub to_square: Square,
+    pub promote_type: PieceType
 }
 
 // constants
@@ -535,7 +536,7 @@ impl Square {
         }
     }
 
-    pub fn slide(&self, dir : Direction, dist : i32) -> Option<Square> {
+    pub fn slide(&self, dir: Direction, dist: i32) -> Option<Square> {
         let mut cur = Some(*self);
         for i in 1..(dist+1) {
             match (cur) {
@@ -1661,15 +1662,18 @@ impl Square {
 
 impl Move {
     pub fn from_uci(m: &str) -> Option<Move> {
-        if m.len() < 4 {
+        let mlen = m.len();
+        if mlen < 4 {
             return None;
         }
         let fs = Square::from_uci(&m[0..2]);
         let ts = Square::from_uci(&m[2..4]);
+        let pt = if mlen >= 5 { PieceType::from_char(m.chars().nth(4).unwrap()) } else { PieceType::Null };
         return match (fs, ts) {
             (Some(x), Some(y)) => Some(Move {
                 from_square: x,
-                to_square: y
+                to_square: y,
+                promote_type: pt
             }),
             _ => None
         }
@@ -1678,7 +1682,11 @@ impl Move {
     pub fn to_uci(&self) -> String {
         let fs = self.from_square.to_uci();
         let ts = self.to_square.to_uci();
-        return format!("{}{}", fs, ts);
+        if self.promote_type == PieceType::Null {
+            return format!("{}{}", fs, ts);
+        } else {
+            return format!("{}{}{}", fs, ts, self.promote_type.to_char());
+        }
     }
 }
 
@@ -2003,5 +2011,24 @@ impl PieceType {
             PieceType::Pawn => 'p',
             _ => '.'
         }
+    }
+}
+
+impl Direction {
+    pub fn mirror(&self) -> Direction {
+        return match self {
+            Direction::N => Direction::S,
+            Direction::S => Direction::N,
+            Direction::E => Direction::E,
+            Direction::W => Direction::W,
+            Direction::NE => Direction::SE,
+            Direction::NW => Direction::SW,
+            Direction::SE => Direction::NE,
+            Direction::SW => Direction::NW
+        }
+    }
+
+    pub fn rel(&self, c: Color) -> Direction {
+        return if c == Color::White { *self } else { self.mirror() };
     }
 }

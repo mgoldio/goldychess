@@ -28,6 +28,7 @@ pub fn calc_pmoves(b : &Board, exclude_castles : bool) -> Vec<Move> {
 pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<Move> {
     let mut vec = Vec::<Move>::new();
     let bitboard = bitboard::square_to_bitboard(p.square);
+    let bitboard_rel = bitboard::get_bitboard_rel(bitboard, b.turn);
     let white_bitboard = b.white_bitboard_pieces.king 
         | b.white_bitboard_pieces.queens 
         | b.white_bitboard_pieces.rooks 
@@ -43,15 +44,16 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
     let all_bitboard = white_bitboard | black_bitboard; // bitboard of all pieces
     let friendly_bitboard = if b.turn == Color::White { white_bitboard } else { black_bitboard }; // bitboard of friendly pieces
     let enemy_bitboard = if b.turn == Color::White { black_bitboard } else { white_bitboard }; // bitboard of enemy pieces
-    let all_bitboard_rel = if b.turn == Color::White { all_bitboard } else { bitboard::flip_bitboard(all_bitboard) }; // bitboard of all pieces but flipped such that Rank 1 is always the current color's back rank
-    match (b.turn, p.piece_type) {
-        (Color::White, PieceType::King) |  (Color::Black, PieceType::King) => {
+    let enemy_bitboard_rel = bitboard::get_bitboard_rel(enemy_bitboard, b.turn);
+    let all_bitboard_rel = bitboard::get_bitboard_rel(all_bitboard, b.turn); // bitboard of all pieces but flipped such that Rank 1 is always the current color's back rank
+    match p.piece_type {
+        PieceType::King => {
             for &dir in types::KING_DIRECTIONS.iter() {
                 let moved_bitboard = bitboard::slide(bitboard, dir, 1);
                 if (moved_bitboard & friendly_bitboard) == 0 {
                     let to_sq = p.square.slide(dir, 1);
                     if !to_sq.is_none() {
-                        vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                        vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                     }
                 }
             }
@@ -67,10 +69,10 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
                         // we don't test the square where the king will end up because it will be checked later by calc_moves
                         let test_sq = p.square.slide(Direction::W, 1);
                         if !test_sq.is_none() && !to_sq.is_none() {
-                            let test_move = Move {from_square: p.square, to_square: test_sq.unwrap()};
+                            let test_move = Move {from_square: p.square, to_square: test_sq.unwrap(), promote_type: PieceType::Null};
                             let test_board = utils::apply_move(b, test_move);
                             if test_pmoves(&test_board) {
-                                vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                                vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                             }
                         }
                     }
@@ -84,24 +86,24 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
                         // we don't test the square where the king will end up because it will be checked later by calc_moves
                         let test_sq = p.square.slide(Direction::E, 1);
                         if !test_sq.is_none() && !to_sq.is_none() {
-                            let test_move = Move {from_square: p.square, to_square: test_sq.unwrap()};
+                            let test_move = Move {from_square: p.square, to_square: test_sq.unwrap(), promote_type: PieceType::Null};
                             let test_board = utils::apply_move(b, test_move);
                             if test_pmoves(&test_board) {
-                                vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                                vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                             }
                         }
                     }
                 }
             }
         },
-        (Color::White, PieceType::Queen) |  (Color::Black, PieceType::Queen) => {
+        PieceType::Queen => {
             for &dir in types::QUEEN_DIRECTIONS.iter() {
                 for dist in 1..8 {
                     let moved_bitboard = bitboard::slide(bitboard, dir, dist);
                     if (moved_bitboard & friendly_bitboard) == 0 {
                         let to_sq = p.square.slide(dir, dist);
                         if !to_sq.is_none() {
-                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                         }
                         if (moved_bitboard & enemy_bitboard) != 0 {
                             // if it's a capture, stop scanning further in this direction
@@ -114,14 +116,14 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
                 }
             }
         },
-        (Color::White, PieceType::Rook) |  (Color::Black, PieceType::Rook) => {
+        PieceType::Rook => {
             for &dir in types::ROOK_DIRECTIONS.iter() {
                 for dist in 1..8 {
                     let moved_bitboard = bitboard::slide(bitboard, dir, dist);
                     if (moved_bitboard & friendly_bitboard) == 0 {
                         let to_sq = p.square.slide(dir, dist);
                         if !to_sq.is_none() {
-                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                         }
                         if (moved_bitboard & enemy_bitboard) != 0 {
                             // if it's a capture, stop scanning further in this direction
@@ -134,14 +136,14 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
                 }
             }
         },
-        (Color::White, PieceType::Bishop) |  (Color::Black, PieceType::Bishop) => {
+        PieceType::Bishop => {
             for &dir in types::BISHOP_DIRECTIONS.iter() {
                 for dist in 1..8 {
                     let moved_bitboard = bitboard::slide(bitboard, dir, dist);
                     if (moved_bitboard & friendly_bitboard) == 0 {
                         let to_sq = p.square.slide(dir, dist);
                         if !to_sq.is_none() {
-                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                         }
                         if (moved_bitboard & enemy_bitboard) != 0 {
                             // if it's a capture, stop scanning further in this direction
@@ -154,80 +156,48 @@ pub fn calc_pmoves_piece(b : &Board, p : &Piece, exclude_castles : bool) -> Vec<
                 }
             }
         },
-        (Color::White, PieceType::Knight) |  (Color::Black, PieceType::Knight) => {
+        PieceType::Knight => {
             for &kh in types::KNIGHT_HOPS.iter() {
                 let moved_bitboard = bitboard::knight_hop(bitboard, kh);
                 if (moved_bitboard & friendly_bitboard) == 0 {
                     let to_sq = p.square.knight_hop(kh);
                     if !to_sq.is_none() {
-                        vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                        vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: PieceType::Null});
                     }
                 }
             }
         },
-        (Color::White, PieceType::Pawn) => {
-            if (bitboard::slide(bitboard, Direction::N, 1) & all_bitboard) == 0 {
+        PieceType::Pawn => {
+            let promote_type = if (bitboard_rel & bitboard::RANK_7) != 0 { PieceType::Queen } else { PieceType::Null };
+            if (bitboard::slide(bitboard_rel, Direction::N, 1) & all_bitboard_rel) == 0 {
                 // if no pieces  are in front of a pawn, it can move there
-                let to_sq = p.square.slide(Direction::N, 1);
+                let to_sq = p.square.slide(Direction::N.rel(b.turn), 1);
                 if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: promote_type});
                 }
                 // if no pieces are directly in front of a pawn on the second rank, it might be able to move 2 spaces
                 if (p.square.get_rank() == Rank::Rank2) {
-                    if (bitboard::slide(bitboard, Direction::N, 2) & all_bitboard) == 0 {
+                    if (bitboard::slide(bitboard_rel, Direction::N, 2) & all_bitboard_rel) == 0 {
                         // no pieces two squares in front; we can double push!
-                        let to_sq = p.square.slide(Direction::N, 2);
+                        let to_sq = p.square.slide(Direction::N.rel(b.turn), 2);
                         if !to_sq.is_none() {
-                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: promote_type});
                         }
                     }
                 }
             }
-            if (bitboard::slide(bitboard, Direction::NW, 1) & enemy_bitboard) != 0 {
+            if (bitboard::slide(bitboard_rel, Direction::NW, 1) & enemy_bitboard_rel) != 0 {
                 // if there is a piece NW to capture, we can move there
-                let to_sq = p.square.slide(Direction::NW, 1);
+                let to_sq = p.square.slide(Direction::NW.rel(b.turn), 1);
                 if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: promote_type});
                 }
             }
-            if (bitboard::slide(bitboard, Direction::NE, 1) & enemy_bitboard) != 0 {
+            if (bitboard::slide(bitboard_rel, Direction::NE, 1) & enemy_bitboard_rel) != 0 {
                 // if there is a piece NE to capture, we can move there
-                let to_sq = p.square.slide(Direction::NE, 1);
+                let to_sq = p.square.slide(Direction::NE.rel(b.turn), 1);
                 if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
-                }
-            }
-        }
-        (Color::Black, PieceType::Pawn) => {
-            if (bitboard::slide(bitboard, Direction::S, 1) & all_bitboard) == 0 {
-                // if no pieces are in front of a pawn, it can move there
-                let to_sq = p.square.slide(Direction::S, 1);
-                if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
-                }
-                // if no pieces are directly in front of a pawn on the seventh rank, it might be able to move 2 spaces
-                if (p.square.get_rank() == Rank::Rank7) {
-                    if (bitboard::slide(bitboard, Direction::S, 2) & all_bitboard) == 0 {
-                        // no pieces two squares in front; we can double push!
-                        let to_sq = p.square.slide(Direction::S, 2);
-                        if !to_sq.is_none() {
-                            vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
-                        }
-                    }
-                }
-            }
-            if (bitboard::slide(bitboard, Direction::SW, 1) & enemy_bitboard) != 0 {
-                // if there is a piece SW to capture, we can move there
-                let to_sq = p.square.slide(Direction::SW, 1);
-                if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
-                }
-            }
-            if (bitboard::slide(bitboard, Direction::SE, 1) & enemy_bitboard) != 0 {
-                // if there is a piece SW to capture, we can move there
-                let to_sq = p.square.slide(Direction::SE, 1);
-                if !to_sq.is_none() {
-                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap()});
+                    vec.push(Move {from_square: p.square, to_square: to_sq.unwrap(), promote_type: promote_type});
                 }
             }
         }

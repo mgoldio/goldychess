@@ -1,5 +1,5 @@
 use crate::types;
-use crate::types::{Direction, KnightHop};
+use crate::types::{Direction, KnightHop, Color};
 
 // types, enums, structs
 
@@ -147,6 +147,8 @@ pub const BLACK_START: Pieces = Pieces {
 };
 
 // Functions
+
+// TODO: this would probably be better placed as an associated function of Square
 pub fn square_to_bitboard(square: types::Square) -> Bitboard {
     return match square {
         types::Square::A1 => SQUARE_A1,
@@ -216,7 +218,7 @@ pub fn square_to_bitboard(square: types::Square) -> Bitboard {
     }
 }
 
-pub fn flip_bitboard(b : Bitboard) -> Bitboard {
+pub fn flip_bitboard(b: Bitboard) -> Bitboard {
     let mut res : Bitboard = 0u64;
     for i in 0..8 {
         let shift1 = i*8;
@@ -227,7 +229,11 @@ pub fn flip_bitboard(b : Bitboard) -> Bitboard {
     return res;
 }
 
-pub fn flip_bitboard_pieces(p : Pieces) -> Pieces {
+pub fn get_bitboard_rel(b: Bitboard, c: Color) -> Bitboard {
+    return if c == Color::White { b } else { flip_bitboard(b) };
+}
+
+pub fn flip_bitboard_pieces(p: Pieces) -> Pieces {
     return Pieces {
         king: flip_bitboard(p.king),
         queens: flip_bitboard(p.queens),
@@ -238,7 +244,11 @@ pub fn flip_bitboard_pieces(p : Pieces) -> Pieces {
     }
 }
 
-pub fn slide(b : Bitboard, dir : Direction, dist : i32) -> Bitboard {
+pub fn get_bitboard_pieces_rel(p: Pieces, c: Color) -> Pieces {
+    return if c == Color::White { p } else { flip_bitboard_pieces(p) };
+}
+
+pub fn slide(b: Bitboard, dir: Direction, dist: i32) -> Bitboard {
     match (dir) {
         Direction::N => return (b << 8*dist),
         Direction::S => return (b >> 8*dist),
@@ -251,7 +261,7 @@ pub fn slide(b : Bitboard, dir : Direction, dist : i32) -> Bitboard {
     }
 }
 
-pub fn knight_hop(b : Bitboard, kh : KnightHop) -> Bitboard {
+pub fn knight_hop(b: Bitboard, kh: KnightHop) -> Bitboard {
     match (kh) {
         KnightHop::NNW => return (b) << 15,
         KnightHop::NNE => return (b << 17),

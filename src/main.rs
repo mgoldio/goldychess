@@ -34,13 +34,9 @@ fn main() -> io::Result<()> {
                 Some(x) => {
                     if x == "moves" {
                         for m_str in tokens {
-                            let promote_type = match (m_str.chars().nth(4)) {
-                                Some(c) => types::PieceType::from_char(c),
-                                _ => types::PieceType::Queen
-                            };
                             match (types::Move::from_uci(m_str)) {
                                 Some(m) => {
-                                    pos = utils::apply_move_with_promotion(&pos, m, promote_type);
+                                    pos = utils::apply_move(&pos, m);
                                 },
                                 _ => {
                                     println!("ERROR: failed to parse move: {}", m_str);
