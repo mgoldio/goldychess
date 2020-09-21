@@ -1,9 +1,11 @@
+#![allow(dead_code)]
+
 use crate::types;
 use crate::types::{Direction, KnightHop, Color};
 
 // types, enums, structs
 
-type Bitboard = u64;
+pub type Bitboard = u64;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Pieces {
@@ -119,14 +121,14 @@ const SSE_MASK: Bitboard = !(FILE_H | RANK_1 | RANK_2);
 const SWW_MASK: Bitboard = !(FILE_A | FILE_B | RANK_1);
 const SEE_MASK: Bitboard = !(FILE_G | FILE_H | RANK_1);
 
-const N_MASK: Bitboard = !RANK_8;
-const S_MASK: Bitboard = !RANK_1;
-const E_MASK: Bitboard = !FILE_H;
-const W_MASK: Bitboard = !FILE_A;
-const NW_MASK: Bitboard = !(FILE_A | RANK_8);
-const NE_MASK: Bitboard = !(FILE_H | RANK_8);
-const SW_MASK: Bitboard = !(FILE_A | RANK_1);
-const SE_MASK: Bitboard = !(FILE_H | RANK_1);
+// const N_MASK: Bitboard = !RANK_8;
+// const S_MASK: Bitboard = !RANK_1;
+// const E_MASK: Bitboard = !FILE_H;
+// const W_MASK: Bitboard = !FILE_A;
+// const NW_MASK: Bitboard = !(FILE_A | RANK_8);
+// const NE_MASK: Bitboard = !(FILE_H | RANK_8);
+// const SW_MASK: Bitboard = !(FILE_A | RANK_1);
+// const SE_MASK: Bitboard = !(FILE_H | RANK_1);
 
 pub const WHITE_START: Pieces = Pieces {
     king: SQUARE_E1,
@@ -147,8 +149,6 @@ pub const BLACK_START: Pieces = Pieces {
 };
 
 // Functions
-
-// TODO: this would probably be better placed as an associated function of Square
 pub fn square_to_bitboard(square: types::Square) -> Bitboard {
     return match square {
         types::Square::A1 => SQUARE_A1,
@@ -218,6 +218,10 @@ pub fn square_to_bitboard(square: types::Square) -> Bitboard {
     }
 }
 
+pub fn bitboard_from_index(i: u32) -> Bitboard {
+    return (0x1 << i);
+}
+
 pub fn flip_bitboard(b: Bitboard) -> Bitboard {
     let mut res : Bitboard = 0u64;
     for i in 0..8 {
@@ -249,27 +253,57 @@ pub fn get_bitboard_pieces_rel(p: Pieces, c: Color) -> Pieces {
 }
 
 pub fn slide(b: Bitboard, dir: Direction, dist: i32) -> Bitboard {
-    match (dir) {
-        Direction::N => return (b << 8*dist),
-        Direction::S => return (b >> 8*dist),
-        Direction::E => return (b << 1*dist),
-        Direction::W => return (b >> 1*dist),
-        Direction::NW => return (b << 7*dist),
-        Direction::NE => return (b << 9*dist),
-        Direction::SW => return (b >> 9*dist),
-        Direction::SE => return (b >> 7*dist)
+    match dir {
+        Direction::N => {
+            let mask = ALL_SQUARES >> (8*dist);
+            return (b & mask) << 8*dist;
+        },
+        Direction::S => {
+            let mask = ALL_SQUARES << (8*dist);
+            return (b & mask) >> 8*dist;
+        },
+        Direction::E => {
+            let row_mask = 0xFFu8 >> dist;
+            let mask = u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) << dist;
+        },
+        Direction::W => {
+            let row_mask = 0xFFu8 << dist;
+            let mask = u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) >> dist;
+        },
+        Direction::NW => {
+            let row_mask = 0xFFu8 << dist;
+            let mask = (ALL_SQUARES >> (8*dist)) & u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) << 7*dist;
+        },
+        Direction::NE => {
+            let row_mask = 0xFFu8 >> dist;
+            let mask = (ALL_SQUARES >> (8*dist)) & u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) << 9*dist;
+        },
+        Direction::SW => {
+            let row_mask = 0xFFu8 << dist;
+            let mask = (ALL_SQUARES << (8*dist)) & u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) >> 9*dist;
+        },
+        Direction::SE => {
+            let row_mask = 0xFFu8 >> dist;
+            let mask = (ALL_SQUARES << (8*dist)) & u64::from_ne_bytes([row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask, row_mask]);
+            return (b & mask) >> 7*dist;
+        }
     }
 }
 
 pub fn knight_hop(b: Bitboard, kh: KnightHop) -> Bitboard {
-    match (kh) {
-        KnightHop::NNW => return (b) << 15,
-        KnightHop::NNE => return (b << 17),
-        KnightHop::NWW => return (b << 6),
-        KnightHop::NEE => return (b << 10),
-        KnightHop::SSW => return (b >> 17),
-        KnightHop::SSE => return (b >> 15),
-        KnightHop::SWW => return (b >> 10),
-        KnightHop::SEE => return (b >> 6)
+    return match kh {
+        KnightHop::NNW => (b & NNW_MASK) << 15,
+        KnightHop::NNE => (b & NNE_MASK) << 17,
+        KnightHop::NWW => (b & NWW_MASK) << 6,
+        KnightHop::NEE => (b & NEE_MASK) << 10,
+        KnightHop::SSW => (b & SSW_MASK) >> 17,
+        KnightHop::SSE => (b & SSE_MASK) >> 15,
+        KnightHop::SWW => (b & SWW_MASK) >> 10,
+        KnightHop::SEE => (b & SEE_MASK) >> 6
     }
 }

@@ -72,9 +72,9 @@ fn main() -> io::Result<()> {
             }
             moves_with_eval.sort_by_key(|k| k.0);
 
-            // for (e, m) in moves_with_eval.iter() {
-            //     println!("info depth {} score cp {} pv {}", depth, e, m.to_uci());
-            // }
+            for (e, m) in moves_with_eval.iter() {
+                println!("info depth {} score cp {} pv {}", depth, e, m.to_uci());
+            }
 
             let best_pv = moves_with_eval.into_iter().last();
 

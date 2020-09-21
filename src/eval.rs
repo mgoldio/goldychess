@@ -18,7 +18,7 @@ pub fn eval_move_max(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
     let board = utils::apply_move(b, m);
 
     if rem_depth == 0 {
-        return eval_move_quick(&board);
+        return eval_pos_quick(&board);
     }
 
     let next_moves = move_search::calc_moves(&board);
@@ -54,7 +54,7 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
     let board = utils::apply_move(b, m);
 
     if rem_depth == 0 {
-        return eval_move_quick(&board);
+        return eval_pos_quick(&board);
     }
 
     let next_moves = move_search::calc_moves(&board);
@@ -86,23 +86,21 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
     return new_beta;
 }
 
-fn eval_move_quick(b: &Board) -> i32 {
-    let mut white_eval = eval_move_quick_color(b, Color::White);
-    let mut black_eval = eval_move_quick_color(b, Color::Black);
+fn eval_pos_quick(b: &Board) -> i32 {
+    let mut white_eval = eval_pos_quick_color(b, Color::White);
+    let mut black_eval = eval_pos_quick_color(b, Color::Black);
 
     return white_eval - black_eval;
 }
 
-fn eval_move_quick_color(b: &Board, c: Color) -> i32 {
+fn eval_pos_quick_color(b: &Board, c: Color) -> i32 {
     let mut eval = 0;
 
     let pieces = if c == Color::White { b.white_pieces } else { b.black_pieces };
     let bitboard_pieces = if c == Color::White { b.white_bitboard_pieces } else { bitboard::flip_bitboard_pieces(b.black_bitboard_pieces) };
     let enemy_bitboard_pieces = if c == Color::White { b.black_bitboard_pieces } else { bitboard::flip_bitboard_pieces(b.white_bitboard_pieces) };
 
-
-
-    // add value for castling and for castling rights, more for castling short
+    // add value for castling rights; more for castling short
     let can_castle_long = if b.turn == Color::White { b.castling_rights.white_long } else { b.castling_rights.black_long };
     let can_castle_short = if b.turn == Color::White { b.castling_rights.white_short } else { b.castling_rights.black_short };
     if can_castle_long {

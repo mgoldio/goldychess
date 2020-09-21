@@ -1,6 +1,14 @@
+#![allow(dead_code)]
+
 use crate::bitboard;
 
 // types, enums, structs
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum GamePhase {
+    Middlegame,
+    Endgame
+}
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Direction {
@@ -12,12 +20,6 @@ pub enum Direction {
     NW,
     SE,
     SW
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum GamePhase {
-    Middlegame,
-    Endgame
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -396,6 +398,76 @@ impl Square {
             Square::F8 => 0x3Dusize,
             Square::G8 => 0x3Eusize,
             Square::H8 => 0x3Fusize
+        }
+    }
+
+    pub fn from_index(i: u32) -> Option<Square> {
+        return match i {
+            0u32 => Some(Square::A1),
+            1u32 => Some(Square::B1),
+            2u32 => Some(Square::C1),
+            3u32 => Some(Square::D1),
+            4u32 => Some(Square::E1),
+            5u32 => Some(Square::F1),
+            6u32 => Some(Square::G1),
+            7u32 => Some(Square::H1),
+            8u32 => Some(Square::A2),
+            9u32 => Some(Square::B2),
+            10u32 => Some(Square::C2),
+            11u32 => Some(Square::D2),
+            12u32 => Some(Square::E2),
+            13u32 => Some(Square::F2),
+            14u32 => Some(Square::G2),
+            15u32 => Some(Square::H2),
+            16u32 => Some(Square::A3),
+            17u32 => Some(Square::B3),
+            18u32 => Some(Square::C3),
+            19u32 => Some(Square::D3),
+            20u32 => Some(Square::E3),
+            21u32 => Some(Square::F3),
+            22u32 => Some(Square::G3),
+            23u32 => Some(Square::H3),
+            24u32 => Some(Square::A4),
+            25u32 => Some(Square::B4),
+            26u32 => Some(Square::C4),
+            27u32 => Some(Square::D4),
+            28u32 => Some(Square::E4),
+            29u32 => Some(Square::F4),
+            30u32 => Some(Square::G4),
+            31u32 => Some(Square::H4),
+            32u32 => Some(Square::A5),
+            33u32 => Some(Square::B5),
+            34u32 => Some(Square::C5),
+            35u32 => Some(Square::D5),
+            36u32 => Some(Square::E5),
+            37u32 => Some(Square::F5),
+            38u32 => Some(Square::G5),
+            39u32 => Some(Square::H5),
+            40u32 => Some(Square::A6),
+            41u32 => Some(Square::B6),
+            42u32 => Some(Square::C6),
+            43u32 => Some(Square::D6),
+            44u32 => Some(Square::E6),
+            45u32 => Some(Square::F6),
+            46u32 => Some(Square::G6),
+            47u32 => Some(Square::H6),
+            48u32 => Some(Square::A7),
+            49u32 => Some(Square::B7),
+            50u32 => Some(Square::C7),
+            51u32 => Some(Square::D7),
+            52u32 => Some(Square::E7),
+            53u32 => Some(Square::F7),
+            54u32 => Some(Square::G7),
+            55u32 => Some(Square::H7),
+            56u32 => Some(Square::A8),
+            57u32 => Some(Square::B8),
+            58u32 => Some(Square::C8),
+            59u32 => Some(Square::D8),
+            60u32 => Some(Square::E8),
+            61u32 => Some(Square::F8),
+            62u32 => Some(Square::G8),
+            63u32 => Some(Square::H8),                     
+            _ => None
         }
     }
 
@@ -1659,6 +1731,83 @@ impl Square {
             Square::H8 => Square::H1
         }
     }
+
+    pub fn rel(&self, c: Color) -> Square {
+        if c == Color::Black {
+            return self.mirror();
+        } else {
+            return *self;
+        }
+    }
+
+    pub fn to_bitboard(&self) -> bitboard::Bitboard {
+        return match self {
+            Square::A1 => bitboard::SQUARE_A1,
+            Square::B1 => bitboard::SQUARE_B1,
+            Square::C1 => bitboard::SQUARE_C1,
+            Square::D1 => bitboard::SQUARE_D1,
+            Square::E1 => bitboard::SQUARE_E1,
+            Square::F1 => bitboard::SQUARE_F1,
+            Square::G1 => bitboard::SQUARE_G1,
+            Square::H1 => bitboard::SQUARE_H1,
+            Square::A2 => bitboard::SQUARE_A2,
+            Square::B2 => bitboard::SQUARE_B2,
+            Square::C2 => bitboard::SQUARE_C2,
+            Square::D2 => bitboard::SQUARE_D2,
+            Square::E2 => bitboard::SQUARE_E2,
+            Square::F2 => bitboard::SQUARE_F2,
+            Square::G2 => bitboard::SQUARE_G2,
+            Square::H2 => bitboard::SQUARE_H2,
+            Square::A3 => bitboard::SQUARE_A3,
+            Square::B3 => bitboard::SQUARE_B3,
+            Square::C3 => bitboard::SQUARE_C3,
+            Square::D3 => bitboard::SQUARE_D3,
+            Square::E3 => bitboard::SQUARE_E3,
+            Square::F3 => bitboard::SQUARE_F3,
+            Square::G3 => bitboard::SQUARE_G3,
+            Square::H3 => bitboard::SQUARE_H3,
+            Square::A4 => bitboard::SQUARE_A4,
+            Square::B4 => bitboard::SQUARE_B4,
+            Square::C4 => bitboard::SQUARE_C4,
+            Square::D4 => bitboard::SQUARE_D4,
+            Square::E4 => bitboard::SQUARE_E4,
+            Square::F4 => bitboard::SQUARE_F4,
+            Square::G4 => bitboard::SQUARE_G4,
+            Square::H4 => bitboard::SQUARE_H4,
+            Square::A5 => bitboard::SQUARE_A5,
+            Square::B5 => bitboard::SQUARE_B5,
+            Square::C5 => bitboard::SQUARE_C5,
+            Square::D5 => bitboard::SQUARE_D5,
+            Square::E5 => bitboard::SQUARE_E5,
+            Square::F5 => bitboard::SQUARE_F5,
+            Square::G5 => bitboard::SQUARE_G5,
+            Square::H5 => bitboard::SQUARE_H5,
+            Square::A6 => bitboard::SQUARE_A6,
+            Square::B6 => bitboard::SQUARE_B6,
+            Square::C6 => bitboard::SQUARE_C6,
+            Square::D6 => bitboard::SQUARE_D6,
+            Square::E6 => bitboard::SQUARE_E6,
+            Square::F6 => bitboard::SQUARE_F6,
+            Square::G6 => bitboard::SQUARE_G6,
+            Square::H6 => bitboard::SQUARE_H6,
+            Square::A7 => bitboard::SQUARE_A7,
+            Square::B7 => bitboard::SQUARE_B7,
+            Square::C7 => bitboard::SQUARE_C7,
+            Square::D7 => bitboard::SQUARE_D7,
+            Square::E7 => bitboard::SQUARE_E7,
+            Square::F7 => bitboard::SQUARE_F7,
+            Square::G7 => bitboard::SQUARE_G7,
+            Square::H7 => bitboard::SQUARE_H7,
+            Square::A8 => bitboard::SQUARE_A8,
+            Square::B8 => bitboard::SQUARE_B8,
+            Square::C8 => bitboard::SQUARE_C8,
+            Square::D8 => bitboard::SQUARE_D8,
+            Square::E8 => bitboard::SQUARE_E8,
+            Square::F8 => bitboard::SQUARE_F8,
+            Square::G8 => bitboard::SQUARE_G8,
+            Square::H8 => bitboard::SQUARE_H8
+        }
+    }
 }
 
 impl Move {
@@ -2029,7 +2178,48 @@ impl Direction {
         }
     }
 
+    pub fn reverse(&self) -> Direction {
+        return match self {
+            Direction::N => Direction::S,
+            Direction::S => Direction::N,
+            Direction::E => Direction::W,
+            Direction::W => Direction::E,
+            Direction::NE => Direction::SW,
+            Direction::NW => Direction::SE,
+            Direction::SE => Direction::NW,
+            Direction::SW => Direction::NE
+        }
+    }
+
     pub fn rel(&self, c: Color) -> Direction {
         return if c == Color::White { *self } else { self.mirror() };
+    }
+}
+
+impl KnightHop {
+    pub fn mirror(&self) -> KnightHop {
+        return match self {
+            KnightHop::NNW => KnightHop::SSW,
+            KnightHop::NNE => KnightHop::SSE,
+            KnightHop::NWW => KnightHop::SWW,
+            KnightHop::NEE => KnightHop::SEE,
+            KnightHop::SSW => KnightHop::NNW,
+            KnightHop::SSE => KnightHop::NNE,
+            KnightHop::SWW => KnightHop::NWW,
+            KnightHop::SEE => KnightHop::NEE
+        }
+    }
+
+    pub fn reverse(&self) -> KnightHop {
+        return match self {
+            KnightHop::NNW => KnightHop::SSE,
+            KnightHop::NNE => KnightHop::SSW,
+            KnightHop::NWW => KnightHop::SEE,
+            KnightHop::NEE => KnightHop::SWW,
+            KnightHop::SSW => KnightHop::NNE,
+            KnightHop::SSE => KnightHop::NNW,
+            KnightHop::SWW => KnightHop::NEE,
+            KnightHop::SEE => KnightHop::NWW
+        }
     }
 }
