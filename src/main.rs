@@ -20,7 +20,7 @@ fn main() -> io::Result<()> {
         if line == "quit" {
             break;
         } else if line == "uci" {
-            println!("id name Goldychess");
+            println!("id name Goldychess v0.1");
             println!("id author Michael Goldstein");
             println!("uciok");
         } else if line == "isready" {
@@ -59,7 +59,7 @@ fn main() -> io::Result<()> {
 
             // let mut moves_with_eval = Vec::<(i32, Vec::<types::Move>)>::new();
             let mut moves_with_eval = Vec::<(i32, types::Move)>::new();
-            let depth = 4;
+            let depth = 6;
             // for m in moves.iter() {
             //     let eval = eval::eval_move(&pos, *m, depth);
             //     moves_with_eval.push(eval);

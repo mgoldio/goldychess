@@ -4,105 +4,7 @@ use crate::bitboard;
 use crate::utils;
 use crate::move_search;
 
-pub fn eval_move_wpv(b: &Board, m: Move, depth: i32) -> (i32, Vec::<Move>) {
-    //return eval_move_recursive(b, m, depth, 1);
-    //return eval_move_max(b, m, depth-1, -1_000_000_000, 1_000_000_000);
-    if b.turn == Color::White {
-        let (eval, pv) = eval_move_min_wpv(b, m, depth-1, -1_000_000_000, 1_000_000_000);
-        return (eval, pv);
-    } else {
-        let (eval, pv) = eval_move_max_wpv(b, m, depth-1, -1_000_000_000, 1_000_000_000);
-        return (-eval, pv);
-    }
-}
-
-pub fn eval_move_min_wpv(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) -> (i32, Vec::<Move>) {
-    let mut pv = Vec::<Move>::new();
-
-    pv.push(m);
-    let board = utils::apply_move(b, m);
-
-    if rem_depth == 0 {
-        return (eval_move_quick(&board), pv);
-    }
-
-    let next_moves = move_search::calc_moves(&board);
-
-    if next_moves.len() == 0 {
-        let test_board = utils::apply_null_move(&board);
-        if move_search::test_pmoves(&test_board) {
-            // test_pmoves returns true if there are no king captures
-            // in this case, that means we're stalemated
-            return (0, pv);
-        } else {
-            // else we've checkmated
-            // to make it prefer quicker mates, add in the "rem_depth"
-            return (1_000_000 - rem_depth, pv);
-        }
-    }
-
-    let mut new_beta = beta;
-    let mut new_pv = Vec::<Move>::new();
-    for next_move in next_moves.iter() {
-        let (m_eval, m_pv) = eval_move_max_wpv(&board, *next_move, rem_depth-1, alpha, new_beta);
-        if m_eval <= alpha {
-            return (alpha, pv);
-        }
-        if m_eval < new_beta {
-            new_beta = m_eval;
-            new_pv = m_pv;
-        }
-    }
-
-    pv.append(&mut new_pv);
-    return (new_beta, pv);
-}
-
-pub fn eval_move_max_wpv(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) -> (i32, Vec::<Move>) {
-    let mut pv = Vec::<Move>::new();
-
-    pv.push(m);
-    let board = utils::apply_move(b, m);
-
-    if rem_depth == 0 {
-        return (eval_move_quick(&board), pv);
-    }
-
-    let next_moves = move_search::calc_moves(&board);
-
-    if next_moves.len() == 0 {
-        let test_board = utils::apply_null_move(&board);
-        if move_search::test_pmoves(&test_board) {
-            // test_pmoves returns true if there are no king captures
-            // in this case, that means we're stalemated
-            return (0, pv);
-        } else {
-            // else we've checkmated
-            // to make it prefer slower mates, add in the "rem_depth"
-            return (-1_000_000 + rem_depth, pv);
-        }
-    }
-
-    let mut new_alpha = alpha;
-    let mut new_pv = Vec::<Move>::new();
-    for next_move in next_moves.iter() {
-        let (m_eval, m_pv) = eval_move_min_wpv(&board, *next_move, rem_depth-1, new_alpha, beta);
-        if m_eval >= beta {
-            return (beta, pv);
-        }
-        if m_eval > new_alpha {
-            new_alpha = m_eval;
-            new_pv = m_pv;
-        }
-    }
-
-    pv.append(&mut new_pv);
-    return (new_alpha, pv);
-}
-
 pub fn eval_move(b: &Board, m: Move, depth: i32) -> i32 {
-    //return eval_move_recursive(b, m, depth, 1);
-    //return eval_move_max(b, m, depth-1, -1_000_000_000, 1_000_000_000);
     if b.turn == Color::White {
         let eval = eval_move_min(b, m, depth-1, -1_000_000_000, 1_000_000_000);
         return eval;
@@ -184,51 +86,12 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
     return new_beta;
 }
 
-// fn eval_move_recursive(b : &Board, m : &Move, depth : u32, cur_depth : u32, alpha : i32, beta : i32) -> i32 {
-//     let board = utils::apply_move(b, m);
-
-//     if cur_depth == depth {
-//         return -eval_move_quick(&board); // we invert because after applying our prospective move the eval will see it as the other side's turn
-//     }
-
-//     let next_moves = move_search::calc_moves(&board);
-//     if next_moves.len() == 0 {
-//         let test_board = utils::apply_null_move(board);
-//         let test_moves = move_search::calc_pmoves(&test_board);
-//         if move_search::test_pmoves(&test_board) {
-//             // test_pmoves returns true if there are no king captures
-//             // in this case, that means we're stalemated
-//             return 0;
-//         } else {
-//             // else we've mated them; just return one million centipawns
-//             return 1_000_000;
-//         }
-//     }
-
-//     let mut best_opp_eval = 2_000_000;
-//     for next_move in next_moves.iter() {
-//         let m_eval = -eval_move_recursive(&board, next_move, depth, cur_depth+1);
-//         if m_eval < best_opp_eval {
-//             best_opp_eval = m_eval;
-//         }
-//     }
-
-//     return best_opp_eval;
-// }
-
 fn eval_move_quick(b: &Board) -> i32 {
     let mut white_eval = eval_move_quick_color(b, Color::White);
     let mut black_eval = eval_move_quick_color(b, Color::Black);
 
     return white_eval - black_eval;
 }
-
-// fn eval_move_quick(b : &Board) -> i32 {
-//     let mut white_eval = eval_move_quick_color(b, Color::White);
-//     let mut black_eval = eval_move_quick_color(b, Color::Black);
-
-//     return if b.turn == Color::White { white_eval - black_eval } else { black_eval - white_eval };
-// }
 
 fn eval_move_quick_color(b: &Board, c: Color) -> i32 {
     let mut eval = 0;

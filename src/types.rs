@@ -107,7 +107,8 @@ pub struct Board {
     pub white_pieces: [Piece; 16],
     pub black_pieces: [Piece; 16],
     pub castling_rights: CastlingRights,
-    pub turn: Color
+    pub turn: Color,
+    //pub moves: [Move; 16];
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
