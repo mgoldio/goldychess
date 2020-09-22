@@ -86,12 +86,13 @@ pub fn apply_move(b : &Board, m : Move) -> Board {
         piece_type = PieceType::Pawn;
     } else {
         println!("ERROR: invalid move: {:?}", m);
+        b.pretty_print();
         return *b;
     }
 
     if (enemy_pieces.rooks & to_bitboard) != 0 {
         // if a rook was captured, we potentially need to clear castling rights
-        match m.from_square {
+        match m.to_square {
             Square::A1 => board.castling_rights.white_long = false,
             Square::H1 => board.castling_rights.white_short = false,
             Square::A8 => board.castling_rights.black_long = false,
@@ -120,6 +121,36 @@ pub fn apply_move(b : &Board, m : Move) -> Board {
             _ => { }
         }
     }
+
+
+    // save off the next board turn here - castling makes pseudomoves which will change the color
+    let next_turn = if board.turn == Color::White {Color::Black} else {Color::White};
+
+    // handle castling
+    if (piece_type == PieceType::King) {
+        // everything should automatically be handled elsewhere except moving the rook...
+        // to properly handle that we simply recurse to generate a pseudo-rook-move prior to returning
+        match (m.from_square, m.to_square) {
+            (Square::E1, Square::G1) => {
+                let rook_move = Move {from_square: Square::H1, to_square: Square::F1, promote_type: PieceType::Null};
+                board = apply_move(&board, rook_move);
+            }
+            (Square::E1, Square::C1) => {
+                let rook_move = Move {from_square: Square::A1, to_square: Square::D1, promote_type: PieceType::Null};
+                board = apply_move(&board, rook_move);
+            }
+            (Square::E8, Square::G8) => {
+                let rook_move = Move {from_square: Square::H8, to_square: Square::F8, promote_type: PieceType::Null};
+                board = apply_move(&board, rook_move);
+            }
+            (Square::E8, Square::C8) => {
+                let rook_move = Move {from_square: Square::A8, to_square: Square::D8, promote_type: PieceType::Null};
+                board = apply_move(&board, rook_move);
+            }
+            _ => { }
+        }
+    }
+
     // clear all the from squares and the to squares on our bitboard
     board.white_bitboard_pieces.king &= mask_from & mask_to;
     board.white_bitboard_pieces.queens &= mask_from & mask_to;
@@ -171,34 +202,6 @@ pub fn apply_move(b : &Board, m : Move) -> Board {
                     _ => board.black_bitboard_pieces.pawns |= to_bitboard
                 }
             },
-            _ => { }
-        }
-    }
-
-    // save off the next board turn here - castling makes pseudomoves which will change the color
-    let next_turn = if board.turn == Color::White {Color::Black} else {Color::White};
-
-    // handle castling
-    if (piece_type == PieceType::King) {
-        // everything should automatically be handled elsewhere except moving the rook...
-        // to properly handle that we simply recurse to generate a pseudo-rook-move prior to returning
-        match (m.from_square, m.to_square) {
-            (Square::E1, Square::G1) => {
-                let rook_move = Move {from_square: Square::H1, to_square: Square::F1, promote_type: PieceType::Null};
-                board = apply_move(&board, rook_move);
-            }
-            (Square::E1, Square::C1) => {
-                let rook_move = Move {from_square: Square::A1, to_square: Square::D1, promote_type: PieceType::Null};
-                board = apply_move(&board, rook_move);
-            }
-            (Square::E8, Square::G8) => {
-                let rook_move = Move {from_square: Square::H8, to_square: Square::F8, promote_type: PieceType::Null};
-                board = apply_move(&board, rook_move);
-            }
-            (Square::E8, Square::C8) => {
-                let rook_move = Move {from_square: Square::A8, to_square: Square::D8, promote_type: PieceType::Null};
-                board = apply_move(&board, rook_move);
-            }
             _ => { }
         }
     }

@@ -57,14 +57,8 @@ fn main() -> io::Result<()> {
 
             moves.shuffle(&mut rand::thread_rng()); // shuffle to make our move choices a little more interesting
 
-            // let mut moves_with_eval = Vec::<(i32, Vec::<types::Move>)>::new();
             let mut moves_with_eval = Vec::<(i32, types::Move)>::new();
             let depth = 6;
-            // for m in moves.iter() {
-            //     let eval = eval::eval_move(&pos, *m, depth);
-            //     moves_with_eval.push(eval);
-            // }
-            // moves_with_eval.sort_by_key(|k| k.0);
     
             for m in moves.iter() {
                 let eval = eval::eval_move(&pos, *m, depth);
@@ -73,22 +67,18 @@ fn main() -> io::Result<()> {
             moves_with_eval.sort_by_key(|k| k.0);
 
             for (e, m) in moves_with_eval.iter() {
-                println!("info depth {} score cp {} pv {}", depth, e, m.to_uci());
+                if *e >= eval::EVAL_MATE {
+                    let moves_to_mate = (depth - (*e - eval::EVAL_MATE))/2;
+                    println!("info depth {} score mate {} pv {}", depth, moves_to_mate, m.to_uci());
+                } else if *e <= -eval::EVAL_MATE {
+                    let moves_to_mate = -(depth + (*e + eval::EVAL_MATE))/2;
+                    println!("info depth {} score mate {} pv {}", depth, moves_to_mate, m.to_uci());
+                } else {
+                    println!("info depth {} score cp {} pv {}", depth, e, m.to_uci());
+                }
             }
 
             let best_pv = moves_with_eval.into_iter().last();
-
-            // let best_move = moves.choose(&mut rand::thread_rng());
-            // match best_pv {
-            //     Some((e, pv)) => {
-            //         let best_move = pv.into_iter().nth(0);
-            //         match best_move {
-            //             Some(m) => println!("bestmove {}", m.to_uci()),
-            //             _ => println!("ERROR: no move found")
-            //         }
-            //     },
-            //     _ => println!("ERROR: no move found")
-            // }
 
             match best_pv {
                 Some((e, m)) => {
@@ -96,10 +86,6 @@ fn main() -> io::Result<()> {
                 },
                 _ => println!("ERROR: no move found")
             }
-            
-            // for m in moves.iter() {
-            //     println!("{:?}", m)
-            // }
 
         } else if line.starts_with("time") {
 
@@ -117,25 +103,11 @@ fn main() -> io::Result<()> {
                             }
                         },
                         "showpmoves" => {
-                            let moves = move_search::calc_pmoves(&pos, false);
+                            let moves = move_search::calc_pmoves(&pos);
                             for m in moves.iter() {
                                 println!("{:?}", m);
                             }
                         },
-                        // "showpieces" => {
-                        //     println!("White pieces:");
-                        //     for p in pos.white_pieces.iter() {
-                        //         if (p.piece_type != types::PieceType::Null) {
-                        //             println!("{:?}", p)
-                        //         }
-                        //     }
-                        //     println!("Black pieces:");
-                        //     for p in pos.black_pieces.iter() {
-                        //         if (p.piece_type != types::PieceType::Null) {
-                        //             println!("{:?}", p)
-                        //         }
-                        //     }
-                        // },
                         "showboard" => {
                             pos.pretty_print();
                         },

@@ -253,6 +253,10 @@ pub fn get_bitboard_pieces_rel(p: Pieces, c: Color) -> Pieces {
     return if c == Color::White { p } else { flip_bitboard_pieces(p) };
 }
 
+pub fn slide1(b: Bitboard, dir: Direction) -> Bitboard {
+    return slide(b, dir, 1);
+}
+
 pub fn slide(b: Bitboard, dir: Direction, dist: i32) -> Bitboard {
     match dir {
         Direction::N => {

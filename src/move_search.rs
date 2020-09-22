@@ -5,7 +5,7 @@ use crate::utils;
 
 pub fn calc_moves(b : &Board) -> Vec<Move> {
     let mut vec = Vec::<Move>::new();
-    for &m in calc_pmoves(b, false).iter() {
+    for &m in calc_pmoves(b).iter() {
         let test_board = utils::apply_move(b, m);
         if test_pmoves(&test_board) {
             vec.push(m);
@@ -15,7 +15,7 @@ pub fn calc_moves(b : &Board) -> Vec<Move> {
     //return calc_pmoves(b);
 }
 
-pub fn calc_pmoves(b: &Board, exclude_castles: bool) -> Vec<Move> {
+pub fn calc_pmoves(b: &Board) -> Vec<Move> {
     let mut capscasts = Vec::<Move>::new(); // captures and castles
     let mut moves = Vec::<Move>::new(); // other moves
 
@@ -267,43 +267,41 @@ pub fn calc_pmoves(b: &Board, exclude_castles: bool) -> Vec<Move> {
             bb = bb & !move_bb;
         }
     }
-    if !exclude_castles {
-        let can_castle_long = if b.turn == Color::White { b.castling_rights.white_long } else { b.castling_rights.black_long };
-        let can_castle_short = if b.turn == Color::White { b.castling_rights.white_short } else { b.castling_rights.black_short };
-        // if we still have long castling rights and no pieces are in the way, check further
-        if can_castle_long && ((all_bitboard_rel & bitboard::LONG_CASTLE_BITBOARD) == 0) {
-            let null_board = utils::apply_null_move(b);
-            if test_pmoves(&null_board) { // we can't castle if we are in check
-                let from_sq = Square::E1.rel(b.turn);
-                let to_sq1 = Square::D1.rel(b.turn);
-                let test_move = Move {from_square: from_sq, to_square: to_sq1, promote_type: PieceType::Null};
+    let can_castle_long = if b.turn == Color::White { b.castling_rights.white_long } else { b.castling_rights.black_long };
+    let can_castle_short = if b.turn == Color::White { b.castling_rights.white_short } else { b.castling_rights.black_short };
+    // if we still have long castling rights and no pieces are in the way, check further
+    if can_castle_long && ((all_bitboard_rel & bitboard::LONG_CASTLE_BITBOARD) == 0) {
+        let null_board = utils::apply_null_move(b);
+        if test_pmoves(&null_board) { // we can't castle if we are in check
+            let from_sq = Square::E1.rel(b.turn);
+            let to_sq1 = Square::D1.rel(b.turn);
+            let test_move = Move {from_square: from_sq, to_square: to_sq1, promote_type: PieceType::Null};
 
-                // we also can't castle through check so we need to check the square we are castling through
-                // we don't test the square where the king will end up because it will be checked later by calc_moves
-                let test_board = utils::apply_move(b, test_move);
-                if test_pmoves(&test_board) {
-                    let to_sq2 = Square::C1.rel(b.turn);
-                    let castle_move = Move {from_square: from_sq, to_square: to_sq2, promote_type: PieceType::Null};
-                    capscasts.push(castle_move);
-                }
+            // we also can't castle through check so we need to check the square we are castling through
+            // we don't test the square where the king will end up because it will be checked later by calc_moves
+            let test_board = utils::apply_move(b, test_move);
+            if test_pmoves(&test_board) {
+                let to_sq2 = Square::C1.rel(b.turn);
+                let castle_move = Move {from_square: from_sq, to_square: to_sq2, promote_type: PieceType::Null};
+                capscasts.push(castle_move);
             }
         }
-        // if we still have short castling rights and no pieces are in the way, check further
-        if can_castle_short && ((all_bitboard_rel & bitboard::SHORT_CASTLE_BITBOARD) == 0) {
-            let null_board = utils::apply_null_move(b);
-            if test_pmoves(&null_board) { // we can't castle if we are in check
-                let from_sq = Square::E1.rel(b.turn);
-                let to_sq1 = Square::F1.rel(b.turn);
-                let test_move = Move {from_square: from_sq, to_square: to_sq1, promote_type: PieceType::Null};
+    }
+    // if we still have short castling rights and no pieces are in the way, check further
+    if can_castle_short && ((all_bitboard_rel & bitboard::SHORT_CASTLE_BITBOARD) == 0) {
+        let null_board = utils::apply_null_move(b);
+        if test_pmoves(&null_board) { // we can't castle if we are in check
+            let from_sq = Square::E1.rel(b.turn);
+            let to_sq1 = Square::F1.rel(b.turn);
+            let test_move = Move {from_square: from_sq, to_square: to_sq1, promote_type: PieceType::Null};
 
-                // we also can't castle through check so we need to check the square we are castling through
-                // we don't test the square where the king will end up because it will be checked later by calc_moves
-                let test_board = utils::apply_move(b, test_move);
-                if test_pmoves(&test_board) {
-                    let to_sq2 = Square::G1.rel(b.turn);
-                    let castle_move = Move {from_square: from_sq, to_square: to_sq2, promote_type: PieceType::Null};
-                    capscasts.push(castle_move);
-                }
+            // we also can't castle through check so we need to check the square we are castling through
+            // we don't test the square where the king will end up because it will be checked later by calc_moves
+            let test_board = utils::apply_move(b, test_move);
+            if test_pmoves(&test_board) {
+                let to_sq2 = Square::G1.rel(b.turn);
+                let castle_move = Move {from_square: from_sq, to_square: to_sq2, promote_type: PieceType::Null};
+                capscasts.push(castle_move);
             }
         }
     }
@@ -312,15 +310,95 @@ pub fn calc_pmoves(b: &Board, exclude_castles: bool) -> Vec<Move> {
     return capscasts;
 }
 
+// // returns false if a pmove attacks a king, true otherwise
+// pub fn test_pmoves(b : &Board) -> bool {
+//     let pmoves = calc_pmoves(b, true);
+//     for m in pmoves {
+//         let dest_bitboard = bitboard::square_to_bitboard(m.to_square);
+//         let kings = b.black_bitboard_pieces.king | b.white_bitboard_pieces.king;
+//         if (dest_bitboard & kings) != 0 {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
+
 // returns false if a pmove attacks a king, true otherwise
-pub fn test_pmoves(b : &Board) -> bool {
-    let pmoves = calc_pmoves(b, true);
-    for m in pmoves {
-        let dest_bitboard = bitboard::square_to_bitboard(m.to_square);
-        let kings = b.black_bitboard_pieces.king | b.white_bitboard_pieces.king;
-        if (dest_bitboard & kings) != 0 {
+pub fn test_pmoves(b: &Board) -> bool {
+    let pieces = if b.turn == Color::White { b.white_bitboard_pieces } else { b.black_bitboard_pieces };
+    let enemy_pieces = if b.turn == Color::White { b.black_bitboard_pieces } else { b.white_bitboard_pieces };
+    let king = enemy_pieces.king;
+    let all_except_king = pieces.king | pieces.queens | pieces.rooks | pieces.bishops | pieces.knights | pieces.pawns
+        | enemy_pieces.queens | enemy_pieces.rooks | enemy_pieces.bishops | enemy_pieces.knights | enemy_pieces.pawns;
+    let all_except_king_mask = !all_except_king;
+    let king_idx_lo = king.trailing_zeros();
+    let king_idx_hi = king.leading_zeros();
+
+    // knight hops
+    {
+        let mut bitboard = 0u64;
+        for &kh in types::KNIGHT_HOPS.iter() {
+            bitboard |= bitboard::knight_hop(pieces.knights, kh);
+        }
+        if (bitboard & king) != 0 {
             return false;
         }
     }
+
+    // diagonals
+    {
+        let mut bitboard = 0u64;
+        for &dir in types::BISHOP_DIRECTIONS.iter() {
+            let mut bishops_and_queens = pieces.bishops | pieces.queens;
+            for dist in 1..8 {
+                bishops_and_queens = bitboard::slide1(bishops_and_queens, dir) & all_except_king_mask;
+                bitboard |= bishops_and_queens;
+            }
+        }
+        if (bitboard & king) != 0 {
+            return false;
+        }
+    }
+
+    // ranks and files
+    {
+        let mut bitboard = 0u64;
+        for &dir in types::ROOK_DIRECTIONS.iter() {
+            let mut rooks_and_queens = pieces.rooks | pieces.queens;
+            for dist in 1..8 {
+                rooks_and_queens = bitboard::slide1(rooks_and_queens, dir) & all_except_king_mask;
+                bitboard |= rooks_and_queens;
+            }
+        }
+        if (bitboard & king) != 0 {
+            return false;
+        }
+    }
+
+    // pawns
+    {
+        let mut bitboard = 0u64;
+        if b.turn == Color::White {
+            bitboard = bitboard::slide1(pieces.pawns, Direction::NW) | bitboard::slide1(pieces.pawns, Direction::NE);
+        } else {
+            bitboard = bitboard::slide1(pieces.pawns, Direction::SW) | bitboard::slide1(pieces.pawns, Direction::SE);
+        }
+        if (bitboard & king) != 0 {
+            return false;
+        }
+    }
+
+    // other king
+    {
+        let mut friendly_king = pieces.king;
+        let mut bitboard = 0u64;
+        for &dir in types::KING_DIRECTIONS.iter() {
+            bitboard |= bitboard::slide1(friendly_king, dir);
+        }
+        if (bitboard & king) != 0 {
+            return false;
+        }
+    }
+
     return true;
 }

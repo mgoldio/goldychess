@@ -4,6 +4,8 @@ use crate::bitboard;
 use crate::utils;
 use crate::move_search;
 
+pub const EVAL_MATE: i32 = 1_000_000;
+
 pub const KING_EVAL: [i32; 64] = [
     50050, 50050, 50050, 50000, 50000, 50000, 50050, 50050, 
     50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000, 
@@ -109,7 +111,7 @@ pub fn eval_move_max(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
         } else {
             // else we've checkmated
             // to make it prefer slower mates, add in the "rem_depth"
-            return -1_000_000 - rem_depth;
+            return -EVAL_MATE - rem_depth;
         }
     }
 
@@ -145,7 +147,7 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
         } else {
             // else we've checkmated
             // to make it prefer quicker mates, add in the "rem_depth"
-            return 1_000_000 + rem_depth;
+            return EVAL_MATE + rem_depth;
         }
     }
 
