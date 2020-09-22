@@ -4,6 +4,83 @@ use crate::bitboard;
 use crate::utils;
 use crate::move_search;
 
+pub const KING_EVAL: [i32; 64] = [
+    50050, 50050, 50050, 50000, 50000, 50000, 50050, 50050, 
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000, 
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000,
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000,
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000,
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000,
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000,
+    50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000
+];
+
+pub const KING_ENDGAME_EVAL: [i32; 64] = [
+    49940, 49950, 49960, 49970, 49970, 49960, 49950, 49940, 
+    49950, 49960, 49970, 49980, 49980, 49970, 49960, 49950, 
+    49960, 49970, 49980, 49990, 49990, 49980, 49970, 49960,
+    49970, 49980, 49990, 50000, 50000, 49990, 49980, 49970,
+    49970, 49980, 49990, 50000, 50000, 49990, 49980, 49970,
+    49960, 49970, 49980, 49990, 49990, 49980, 49970, 49960,
+    49950, 49960, 49970, 49980, 49980, 49970, 49960, 49950,
+    49940, 49950, 49960, 49970, 49970, 49960, 49950, 49940
+];
+
+pub const QUEEN_EVAL: [i32; 64] = [
+    940, 940, 940, 940, 940, 940, 940, 940, 
+    940, 940, 940, 940, 940, 940, 940, 940, 
+    940, 940, 940, 940, 940, 940, 940, 940,
+    940, 940, 940, 940, 940, 940, 940, 940,
+    940, 940, 940, 940, 940, 940, 940, 940,
+    940, 940, 940, 940, 940, 940, 940, 940,
+    940, 940, 940, 940, 940, 940, 940, 940,
+    940, 940, 940, 940, 940, 940, 940, 940
+];
+
+pub const ROOK_EVAL: [i32; 64] = [
+    510, 510, 510, 510, 510, 510, 510, 510, 
+    510, 510, 510, 510, 510, 510, 510, 510, 
+    510, 510, 510, 510, 510, 510, 510, 510,
+    510, 510, 510, 510, 510, 510, 510, 510,
+    510, 510, 510, 510, 510, 510, 510, 510,
+    510, 510, 510, 510, 510, 510, 510, 510,
+    510, 510, 510, 510, 510, 510, 510, 510,
+    510, 510, 510, 510, 510, 510, 510, 510
+];
+
+pub const BISHOP_EVAL: [i32; 64] = [
+    315, 325, 325, 325, 325, 325, 325, 315, 
+    325, 335, 336, 340, 340, 336, 335, 325, 
+    325, 336, 337, 341, 341, 337, 336, 325, 
+    325, 340, 341, 345, 345, 341, 340, 325, 
+    325, 340, 341, 345, 345, 341, 340, 325, 
+    325, 336, 337, 341, 341, 337, 336, 325, 
+    325, 335, 336, 340, 340, 336, 335, 325, 
+    315, 325, 325, 325, 325, 325, 325, 315
+];
+
+pub const KNIGHT_EVAL: [i32; 64] = [
+    250, 265, 280, 280, 280, 280, 265, 250, 
+    280, 295, 315, 325, 325, 315, 295, 280, 
+    280, 295, 315, 325, 325, 315, 295, 280, 
+    280, 305, 335, 345, 345, 335, 305, 280, 
+    280, 305, 335, 345, 345, 335, 305, 280, 
+    280, 305, 335, 345, 345, 335, 305, 280, 
+    280, 295, 315, 325, 325, 315, 295, 280, 
+    280, 295, 310, 310, 310, 310, 295, 280
+];
+
+pub const PAWN_EVAL: [i32; 64] = [
+    90,  90, 100, 110, 110, 100,  90,  90, 
+    90,  90, 100,  45,  45, 100,  90,  90, 
+    90,  90, 100, 110, 110, 100,  90,  90, 
+    95,  95, 105, 115, 115, 105,  95,  95, 
+   100, 100, 110, 120, 120, 110, 100, 100, 
+   105, 105, 115, 125, 125, 115, 105, 105, 
+   150, 150, 160, 170, 170, 160, 150, 150, 
+    90,  90, 100, 110, 110, 100,  90,  90   
+];
+
 pub fn eval_move(b: &Board, m: Move, depth: i32) -> i32 {
     if b.turn == Color::White {
         let eval = eval_move_min(b, m, depth-1, -1_000_000_000, 1_000_000_000);
@@ -96,7 +173,6 @@ fn eval_pos_quick(b: &Board) -> i32 {
 fn eval_pos_quick_color(b: &Board, c: Color) -> i32 {
     let mut eval = 0;
 
-    let pieces = if c == Color::White { b.white_pieces } else { b.black_pieces };
     let bitboard_pieces = if c == Color::White { b.white_bitboard_pieces } else { bitboard::flip_bitboard_pieces(b.black_bitboard_pieces) };
     let enemy_bitboard_pieces = if c == Color::White { b.black_bitboard_pieces } else { bitboard::flip_bitboard_pieces(b.white_bitboard_pieces) };
 
@@ -126,7 +202,6 @@ fn eval_pos_quick_color(b: &Board, c: Color) -> i32 {
     eval -= 30 * num_pawn_islands;
 
     // if the material of each player isn't that high, use the endgame eval
-    let mut gamephase = GamePhase::Middlegame;
     let num_minor_pieces = bitboard_pieces.bishops.count_ones() + bitboard_pieces.knights.count_ones();
     let num_major_pieces = bitboard_pieces.queens.count_ones() + bitboard_pieces.rooks.count_ones();
     let opp_num_minor_pieces = enemy_bitboard_pieces.bishops.count_ones() + enemy_bitboard_pieces.knights.count_ones();
@@ -135,9 +210,7 @@ fn eval_pos_quick_color(b: &Board, c: Color) -> i32 {
     let gamephase = if cond { GamePhase::Endgame } else { GamePhase::Middlegame };
 
     // add value for material (note: this value is relative based on location and gamephase)
-    for p in pieces.iter() {
-        eval += p.get_material_value(gamephase);
-    }
+    eval += bitboard::get_pieces_material_value(bitboard_pieces, gamephase);
 
     // if we're not in the endgame and we're castled, add value for the king having a pawn shield
     if (gamephase != GamePhase::Endgame) && ((bitboard_pieces.king & bitboard::CASTLED_KING_BITBOARD) != 0) {

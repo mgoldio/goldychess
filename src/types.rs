@@ -106,8 +106,6 @@ pub struct CastlingRights {
 pub struct Board {
     pub white_bitboard_pieces: bitboard::Pieces,
     pub black_bitboard_pieces: bitboard::Pieces,
-    pub white_pieces: [Piece; 16],
-    pub black_pieces: [Piece; 16],
     pub castling_rights: CastlingRights,
     pub turn: Color,
     //pub moves: [Move; 16];
@@ -130,65 +128,53 @@ pub const KNIGHT_HOPS: [KnightHop; 8] = [KnightHop::NNW, KnightHop::NNE, KnightH
 
 // Functions
 impl Board {
-    pub fn get_piece_at(&self, square: Square) -> Option<&Piece> {
-        for p in self.white_pieces.iter() {
-            if p.square == square && p.piece_type != PieceType::Null {
-                return Some(p);
-            }
-        }
-        for p in self.black_pieces.iter() {
-            if p.square == square && p.piece_type != PieceType::Null {
-                return Some(p);
-            }
-        }
-        return None;
-    }
-
     pub fn pretty_print(&self) {
-        let mut pieces : [Piece; 64] = [Piece{color: Color::White, piece_type: PieceType::Null, square: Square::A1}; 64];
-        for p in self.white_pieces.iter() {
-            if (p.piece_type != PieceType::Null) {
-                pieces[p.square.to_index()] = *p;
-            }
-        }
-        for p in self.black_pieces.iter() {
-            if (p.piece_type != PieceType::Null) {
-                pieces[p.square.to_index()] = *p;
-            }
-        }
-        print!("8   ");
-        for i in 56..64 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n7   ");
-        for i in 48..56 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n6   ");
-        for i in 40..48 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n5   ");
-        for i in 32..40 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n4   ");
-        for i in 24..32 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n3   ");
-        for i in 16..24 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n2   ");
-        for i in 8..16 {
-            print!("{} ", pieces[i].to_char())
-        }
-        print!("\n1   ");
-        for i in 0..8 {
-            print!("{} ", pieces[i].to_char())
-        }
-        println!("\n\n    A B C D E F G H");
+    // FIXME
+
+    //     let mut pieces : [Piece; 64] = [Piece{color: Color::White, piece_type: PieceType::Null, square: Square::A1}; 64];
+    //     for p in self.white_pieces.iter() {
+    //         if (p.piece_type != PieceType::Null) {
+    //             pieces[p.square.to_index()] = *p;
+    //         }
+    //     }
+    //     for p in self.black_pieces.iter() {
+    //         if (p.piece_type != PieceType::Null) {
+    //             pieces[p.square.to_index()] = *p;
+    //         }
+    //     }
+    //     print!("8   ");
+    //     for i in 56..64 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n7   ");
+    //     for i in 48..56 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n6   ");
+    //     for i in 40..48 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n5   ");
+    //     for i in 32..40 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n4   ");
+    //     for i in 24..32 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n3   ");
+    //     for i in 16..24 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n2   ");
+    //     for i in 8..16 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     print!("\n1   ");
+    //     for i in 0..8 {
+    //         print!("{} ", pieces[i].to_char())
+    //     }
+    //     println!("\n\n    A B C D E F G H");
     }
 }
 

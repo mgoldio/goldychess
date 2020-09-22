@@ -92,16 +92,7 @@ fn main() -> io::Result<()> {
 
             match best_pv {
                 Some((e, m)) => {
-                    // TODO this is a hack to make Lichess happy with how we promote
-                    let p = pos.get_piece_at(m.from_square);
-                    let bb = bitboard::square_to_bitboard(m.to_square);
-                    let bb_rel = if pos.turn == types::Color::White { bb } else { bitboard::flip_bitboard(bb) };
-                    if (!p.is_none() && p.unwrap().piece_type == types::PieceType::Pawn) && ((bb_rel & bitboard::RANK_8) != 0) {
-                        println!("bestmove {}q", m.to_uci());
-                    }
-                    else {
-                        println!("bestmove {}", m.to_uci());
-                    }
+                    println!("bestmove {}", m.to_uci());
                 },
                 _ => println!("ERROR: no move found")
             }
@@ -131,20 +122,20 @@ fn main() -> io::Result<()> {
                                 println!("{:?}", m);
                             }
                         },
-                        "showpieces" => {
-                            println!("White pieces:");
-                            for p in pos.white_pieces.iter() {
-                                if (p.piece_type != types::PieceType::Null) {
-                                    println!("{:?}", p)
-                                }
-                            }
-                            println!("Black pieces:");
-                            for p in pos.black_pieces.iter() {
-                                if (p.piece_type != types::PieceType::Null) {
-                                    println!("{:?}", p)
-                                }
-                            }
-                        },
+                        // "showpieces" => {
+                        //     println!("White pieces:");
+                        //     for p in pos.white_pieces.iter() {
+                        //         if (p.piece_type != types::PieceType::Null) {
+                        //             println!("{:?}", p)
+                        //         }
+                        //     }
+                        //     println!("Black pieces:");
+                        //     for p in pos.black_pieces.iter() {
+                        //         if (p.piece_type != types::PieceType::Null) {
+                        //             println!("{:?}", p)
+                        //         }
+                        //     }
+                        // },
                         "showboard" => {
                             pos.pretty_print();
                         },

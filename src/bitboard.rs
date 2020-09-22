@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
+use crate::eval;
 use crate::types;
-use crate::types::{Direction, KnightHop, Color};
+use crate::types::{Direction, KnightHop, Color, GamePhase};
 
 // types, enums, structs
 
@@ -306,4 +307,66 @@ pub fn knight_hop(b: Bitboard, kh: KnightHop) -> Bitboard {
         KnightHop::SWW => (b & SWW_MASK) >> 10,
         KnightHop::SEE => (b & SEE_MASK) >> 6
     }
+}
+
+pub fn get_pieces_material_value(p: Pieces, g: GamePhase) -> i32 {
+    let mut eval = 0;
+
+    // king
+    let mut bb = p.king;
+    let idx = bb.trailing_zeros();
+    if bb != 0 {
+        if g == GamePhase::Endgame {
+            eval += eval::KING_ENDGAME_EVAL[(idx as usize)];
+        } else {
+            eval += eval::KING_EVAL[(idx as usize)];
+        }
+    }
+
+    // queens
+    bb = p.queens;
+    while bb != 0 {
+        let idx = bb.trailing_zeros();
+        let idx_bb = bitboard_from_index(idx);
+        eval += eval::QUEEN_EVAL[(idx as usize)];
+        bb &= !idx_bb;
+    }
+
+    // rooks
+    bb = p.rooks;
+    while bb != 0 {
+        let idx = bb.trailing_zeros();
+        let idx_bb = bitboard_from_index(idx);
+        eval += eval::ROOK_EVAL[(idx as usize)];
+        bb &= !idx_bb;
+    }
+
+    // bishops
+    bb = p.bishops;
+    while bb != 0 {
+        let idx = bb.trailing_zeros();
+        let idx_bb = bitboard_from_index(idx);
+        eval += eval::BISHOP_EVAL[(idx as usize)];
+        bb &= !idx_bb;
+    }
+
+    // knights
+    bb = p.knights;
+    while bb != 0 {
+        let idx = bb.trailing_zeros();
+        let idx_bb = bitboard_from_index(idx);
+        eval += eval::KNIGHT_EVAL[(idx as usize)];
+        bb &= !idx_bb;
+    }
+
+    // pawns
+    bb = p.pawns;
+    while bb != 0 {
+        let idx = bb.trailing_zeros();
+        let idx_bb = bitboard_from_index(idx);
+        eval += eval::PAWN_EVAL[(idx as usize)];
+        bb &= !idx_bb;
+    }
+
+    return eval;
 }
