@@ -1,6 +1,6 @@
 [package]
-name = "goldychess_rust"
-version = "0.1.0"
+name = "goldychess"
+version = "0.2.0"
 authors = ["Michael Goldstein <michael@mgold.io>"]
 edition = "2018"
 
@@ -9,5 +9,9 @@ edition = "2018"
 [dependencies]
 rand = "0.7.3"
 
+[target.'cfg(any(windows, unix))']
+rustflags = ["-C target-cpu=native"]
+
 [profile.release]
 opt-level = 3
+target = "native"

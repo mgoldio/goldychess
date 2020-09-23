@@ -1,6 +1,14 @@
+#![allow(dead_code)]
+
 use crate::bitboard;
 
 // types, enums, structs
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum GamePhase {
+    Middlegame,
+    Endgame
+}
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Direction {
@@ -12,12 +20,6 @@ pub enum Direction {
     NW,
     SE,
     SW
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum GamePhase {
-    Middlegame,
-    Endgame
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -86,13 +88,6 @@ pub enum PieceType {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub struct Piece {
-    pub color: Color,
-    pub piece_type: PieceType,
-    pub square: Square
-}
-
-#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct CastlingRights {
     pub white_long: bool,
     pub white_short: bool,
@@ -104,16 +99,18 @@ pub struct CastlingRights {
 pub struct Board {
     pub white_bitboard_pieces: bitboard::Pieces,
     pub black_bitboard_pieces: bitboard::Pieces,
-    pub white_pieces: [Piece; 16],
-    pub black_pieces: [Piece; 16],
+    pub turn: Color,
     pub castling_rights: CastlingRights,
-    pub turn: Color
+    pub enpassant_files: bitboard::Bitrank,
+    pub all_piece_history: [bitboard::Bitboard; 16],
+    pub all_ptr: usize
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Move {
     pub from_square: Square,
-    pub to_square: Square
+    pub to_square: Square,
+    pub promote_type: PieceType
 }
 
 // constants
@@ -126,63 +123,140 @@ pub const KNIGHT_HOPS: [KnightHop; 8] = [KnightHop::NNW, KnightHop::NNE, KnightH
 
 // Functions
 impl Board {
-    pub fn get_piece_at(&self, square: Square) -> Option<&Piece> {
-        for p in self.white_pieces.iter() {
-            if p.square == square && p.piece_type != PieceType::Null {
-                return Some(p);
-            }
-        }
-        for p in self.black_pieces.iter() {
-            if p.square == square && p.piece_type != PieceType::Null {
-                return Some(p);
-            }
-        }
-        return None;
-    }
-
     pub fn pretty_print(&self) {
-        let mut pieces : [Piece; 64] = [Piece{color: Color::White, piece_type: PieceType::Null, square: Square::A1}; 64];
-        for p in self.white_pieces.iter() {
-            if (p.piece_type != PieceType::Null) {
-                pieces[p.square.to_index()] = *p;
+        let mut pieces: [(PieceType, Color); 64] = [(PieceType::Null, Color::White); 64];
+
+        {
+            let bitboard = self.white_bitboard_pieces.king;
+            if bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::King, Color::White);
             }
         }
-        for p in self.black_pieces.iter() {
-            if (p.piece_type != PieceType::Null) {
-                pieces[p.square.to_index()] = *p;
+        {
+            let mut bitboard = self.white_bitboard_pieces.queens;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Queen, Color::White);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
             }
         }
+        {
+            let mut bitboard = self.white_bitboard_pieces.rooks;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Rook, Color::White);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.white_bitboard_pieces.bishops;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Bishop, Color::White);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.white_bitboard_pieces.knights;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Knight, Color::White);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.white_bitboard_pieces.pawns;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Pawn, Color::White);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+
+        {
+            let bitboard = self.black_bitboard_pieces.king;
+            if bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::King, Color::Black);
+            }
+        }
+        {
+            let mut bitboard = self.black_bitboard_pieces.queens;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Queen, Color::Black);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.black_bitboard_pieces.rooks;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Rook, Color::Black);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.black_bitboard_pieces.bishops;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Bishop, Color::Black);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.black_bitboard_pieces.knights;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Knight, Color::Black);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+        {
+            let mut bitboard = self.black_bitboard_pieces.pawns;
+            while bitboard != 0 {
+                pieces[(bitboard.trailing_zeros() as usize)] = (PieceType::Pawn, Color::Black);
+                bitboard &= !(0x1 << bitboard.trailing_zeros());
+            }
+        }
+
         print!("8   ");
         for i in 56..64 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n7   ");
         for i in 48..56 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n6   ");
         for i in 40..48 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n5   ");
         for i in 32..40 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n4   ");
         for i in 24..32 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n3   ");
         for i in 16..24 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n2   ");
         for i in 8..16 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         print!("\n1   ");
         for i in 0..8 {
-            print!("{} ", pieces[i].to_char())
+            let (p, color) = pieces[i];
+            let c = if color == Color::White { p.to_char() } else { p.to_char().to_ascii_uppercase() };
+            print!("{} ", c);
         }
         println!("\n\n    A B C D E F G H");
     }
@@ -397,6 +471,76 @@ impl Square {
         }
     }
 
+    pub fn from_index(i: u32) -> Option<Square> {
+        return match i {
+            0u32 => Some(Square::A1),
+            1u32 => Some(Square::B1),
+            2u32 => Some(Square::C1),
+            3u32 => Some(Square::D1),
+            4u32 => Some(Square::E1),
+            5u32 => Some(Square::F1),
+            6u32 => Some(Square::G1),
+            7u32 => Some(Square::H1),
+            8u32 => Some(Square::A2),
+            9u32 => Some(Square::B2),
+            10u32 => Some(Square::C2),
+            11u32 => Some(Square::D2),
+            12u32 => Some(Square::E2),
+            13u32 => Some(Square::F2),
+            14u32 => Some(Square::G2),
+            15u32 => Some(Square::H2),
+            16u32 => Some(Square::A3),
+            17u32 => Some(Square::B3),
+            18u32 => Some(Square::C3),
+            19u32 => Some(Square::D3),
+            20u32 => Some(Square::E3),
+            21u32 => Some(Square::F3),
+            22u32 => Some(Square::G3),
+            23u32 => Some(Square::H3),
+            24u32 => Some(Square::A4),
+            25u32 => Some(Square::B4),
+            26u32 => Some(Square::C4),
+            27u32 => Some(Square::D4),
+            28u32 => Some(Square::E4),
+            29u32 => Some(Square::F4),
+            30u32 => Some(Square::G4),
+            31u32 => Some(Square::H4),
+            32u32 => Some(Square::A5),
+            33u32 => Some(Square::B5),
+            34u32 => Some(Square::C5),
+            35u32 => Some(Square::D5),
+            36u32 => Some(Square::E5),
+            37u32 => Some(Square::F5),
+            38u32 => Some(Square::G5),
+            39u32 => Some(Square::H5),
+            40u32 => Some(Square::A6),
+            41u32 => Some(Square::B6),
+            42u32 => Some(Square::C6),
+            43u32 => Some(Square::D6),
+            44u32 => Some(Square::E6),
+            45u32 => Some(Square::F6),
+            46u32 => Some(Square::G6),
+            47u32 => Some(Square::H6),
+            48u32 => Some(Square::A7),
+            49u32 => Some(Square::B7),
+            50u32 => Some(Square::C7),
+            51u32 => Some(Square::D7),
+            52u32 => Some(Square::E7),
+            53u32 => Some(Square::F7),
+            54u32 => Some(Square::G7),
+            55u32 => Some(Square::H7),
+            56u32 => Some(Square::A8),
+            57u32 => Some(Square::B8),
+            58u32 => Some(Square::C8),
+            59u32 => Some(Square::D8),
+            60u32 => Some(Square::E8),
+            61u32 => Some(Square::F8),
+            62u32 => Some(Square::G8),
+            63u32 => Some(Square::H8),                     
+            _ => None
+        }
+    }
+
     pub fn get_rank(&self) -> Rank {
         return match self {
             Square::A1 => Rank::Rank1,
@@ -535,7 +679,7 @@ impl Square {
         }
     }
 
-    pub fn slide(&self, dir : Direction, dist : i32) -> Option<Square> {
+    pub fn slide(&self, dir: Direction, dist: i32) -> Option<Square> {
         let mut cur = Some(*self);
         for i in 1..(dist+1) {
             match (cur) {
@@ -1657,19 +1801,99 @@ impl Square {
             Square::H8 => Square::H1
         }
     }
+
+    pub fn rel(&self, c: Color) -> Square {
+        if c == Color::Black {
+            return self.mirror();
+        } else {
+            return *self;
+        }
+    }
+
+    pub fn to_bitboard(&self) -> bitboard::Bitboard {
+        return match self {
+            Square::A1 => bitboard::SQUARE_A1,
+            Square::B1 => bitboard::SQUARE_B1,
+            Square::C1 => bitboard::SQUARE_C1,
+            Square::D1 => bitboard::SQUARE_D1,
+            Square::E1 => bitboard::SQUARE_E1,
+            Square::F1 => bitboard::SQUARE_F1,
+            Square::G1 => bitboard::SQUARE_G1,
+            Square::H1 => bitboard::SQUARE_H1,
+            Square::A2 => bitboard::SQUARE_A2,
+            Square::B2 => bitboard::SQUARE_B2,
+            Square::C2 => bitboard::SQUARE_C2,
+            Square::D2 => bitboard::SQUARE_D2,
+            Square::E2 => bitboard::SQUARE_E2,
+            Square::F2 => bitboard::SQUARE_F2,
+            Square::G2 => bitboard::SQUARE_G2,
+            Square::H2 => bitboard::SQUARE_H2,
+            Square::A3 => bitboard::SQUARE_A3,
+            Square::B3 => bitboard::SQUARE_B3,
+            Square::C3 => bitboard::SQUARE_C3,
+            Square::D3 => bitboard::SQUARE_D3,
+            Square::E3 => bitboard::SQUARE_E3,
+            Square::F3 => bitboard::SQUARE_F3,
+            Square::G3 => bitboard::SQUARE_G3,
+            Square::H3 => bitboard::SQUARE_H3,
+            Square::A4 => bitboard::SQUARE_A4,
+            Square::B4 => bitboard::SQUARE_B4,
+            Square::C4 => bitboard::SQUARE_C4,
+            Square::D4 => bitboard::SQUARE_D4,
+            Square::E4 => bitboard::SQUARE_E4,
+            Square::F4 => bitboard::SQUARE_F4,
+            Square::G4 => bitboard::SQUARE_G4,
+            Square::H4 => bitboard::SQUARE_H4,
+            Square::A5 => bitboard::SQUARE_A5,
+            Square::B5 => bitboard::SQUARE_B5,
+            Square::C5 => bitboard::SQUARE_C5,
+            Square::D5 => bitboard::SQUARE_D5,
+            Square::E5 => bitboard::SQUARE_E5,
+            Square::F5 => bitboard::SQUARE_F5,
+            Square::G5 => bitboard::SQUARE_G5,
+            Square::H5 => bitboard::SQUARE_H5,
+            Square::A6 => bitboard::SQUARE_A6,
+            Square::B6 => bitboard::SQUARE_B6,
+            Square::C6 => bitboard::SQUARE_C6,
+            Square::D6 => bitboard::SQUARE_D6,
+            Square::E6 => bitboard::SQUARE_E6,
+            Square::F6 => bitboard::SQUARE_F6,
+            Square::G6 => bitboard::SQUARE_G6,
+            Square::H6 => bitboard::SQUARE_H6,
+            Square::A7 => bitboard::SQUARE_A7,
+            Square::B7 => bitboard::SQUARE_B7,
+            Square::C7 => bitboard::SQUARE_C7,
+            Square::D7 => bitboard::SQUARE_D7,
+            Square::E7 => bitboard::SQUARE_E7,
+            Square::F7 => bitboard::SQUARE_F7,
+            Square::G7 => bitboard::SQUARE_G7,
+            Square::H7 => bitboard::SQUARE_H7,
+            Square::A8 => bitboard::SQUARE_A8,
+            Square::B8 => bitboard::SQUARE_B8,
+            Square::C8 => bitboard::SQUARE_C8,
+            Square::D8 => bitboard::SQUARE_D8,
+            Square::E8 => bitboard::SQUARE_E8,
+            Square::F8 => bitboard::SQUARE_F8,
+            Square::G8 => bitboard::SQUARE_G8,
+            Square::H8 => bitboard::SQUARE_H8
+        }
+    }
 }
 
 impl Move {
     pub fn from_uci(m: &str) -> Option<Move> {
-        if m.len() < 4 {
+        let mlen = m.len();
+        if mlen < 4 {
             return None;
         }
         let fs = Square::from_uci(&m[0..2]);
         let ts = Square::from_uci(&m[2..4]);
+        let pt = if mlen >= 5 { PieceType::from_char(m.chars().nth(4).unwrap()) } else { PieceType::Null };
         return match (fs, ts) {
             (Some(x), Some(y)) => Some(Move {
                 from_square: x,
-                to_square: y
+                to_square: y,
+                promote_type: pt
             }),
             _ => None
         }
@@ -1678,298 +1902,10 @@ impl Move {
     pub fn to_uci(&self) -> String {
         let fs = self.from_square.to_uci();
         let ts = self.to_square.to_uci();
-        return format!("{}{}", fs, ts);
-    }
-}
-
-impl Piece {
-    // returns the material value of a piece, in centipawns
-    pub fn get_material_value(&self, gp : GamePhase) -> i32 {
-        let sq = if self.color == Color::White {self.square} else {self.square.mirror()};
-        return match (self.piece_type, sq, gp) {
-            (PieceType::King, Square::G1, GamePhase::Middlegame) => 50050,
-            (PieceType::King, Square::H1, GamePhase::Middlegame) => 50050,
-            (PieceType::King, Square::A1, GamePhase::Middlegame) => 50050,
-            (PieceType::King, Square::B1, GamePhase::Middlegame) => 50050,
-            (PieceType::King, Square::C1, GamePhase::Middlegame) => 50030,
-            (PieceType::King, Square::A1, GamePhase::Endgame) => 49940,
-            (PieceType::King, Square::B1, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::C1, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::D1, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::E1, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::F1, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::G1, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::H1, GamePhase::Endgame) => 49940,
-            (PieceType::King, Square::A2, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::B2, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::C2, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::D2, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::E2, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::F2, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::G2, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::H2, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::A3, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::B3, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::C3, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::D3, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::E3, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::F3, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::G3, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::H3, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::A4, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::B4, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::C4, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::D4, GamePhase::Endgame) => 50000,
-            (PieceType::King, Square::E4, GamePhase::Endgame) => 50000,
-            (PieceType::King, Square::F4, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::G4, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::H4, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::A5, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::B5, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::C5, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::D5, GamePhase::Endgame) => 50000,
-            (PieceType::King, Square::E5, GamePhase::Endgame) => 50000,
-            (PieceType::King, Square::F5, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::G5, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::H5, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::A6, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::B6, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::C6, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::D6, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::E6, GamePhase::Endgame) => 49990,
-            (PieceType::King, Square::F6, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::G6, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::H6, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::A7, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::B7, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::C7, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::D7, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::E7, GamePhase::Endgame) => 49980,
-            (PieceType::King, Square::F7, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::G7, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::H7, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::A8, GamePhase::Endgame) => 49940,
-            (PieceType::King, Square::B8, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::C8, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::D8, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::E8, GamePhase::Endgame) => 49970,
-            (PieceType::King, Square::F8, GamePhase::Endgame) => 49960,
-            (PieceType::King, Square::G8, GamePhase::Endgame) => 49950,
-            (PieceType::King, Square::H8, GamePhase::Endgame) => 49940,
-            (PieceType::King, _, _) => 50000,
-            (PieceType::Queen, _, _) => 940,
-            (PieceType::Rook, _, _) => 510,
-            (PieceType::Bishop, Square::A1, _) => 315,
-            (PieceType::Bishop, Square::B1, _) => 325,
-            (PieceType::Bishop, Square::C1, _) => 325,
-            (PieceType::Bishop, Square::D1, _) => 325,
-            (PieceType::Bishop, Square::E1, _) => 325,
-            (PieceType::Bishop, Square::F1, _) => 325,
-            (PieceType::Bishop, Square::G1, _) => 325,
-            (PieceType::Bishop, Square::H1, _) => 315,
-            (PieceType::Bishop, Square::A2, _) => 325,
-            (PieceType::Bishop, Square::B2, _) => 335,
-            (PieceType::Bishop, Square::C2, _) => 336,
-            (PieceType::Bishop, Square::D2, _) => 340,
-            (PieceType::Bishop, Square::E2, _) => 340,
-            (PieceType::Bishop, Square::F2, _) => 336,
-            (PieceType::Bishop, Square::G2, _) => 335,
-            (PieceType::Bishop, Square::H2, _) => 325,
-            (PieceType::Bishop, Square::A3, _) => 325,
-            (PieceType::Bishop, Square::B3, _) => 336,
-            (PieceType::Bishop, Square::C3, _) => 337,
-            (PieceType::Bishop, Square::D3, _) => 341,
-            (PieceType::Bishop, Square::E3, _) => 341,
-            (PieceType::Bishop, Square::F3, _) => 337,
-            (PieceType::Bishop, Square::G3, _) => 336,
-            (PieceType::Bishop, Square::H3, _) => 325,
-            (PieceType::Bishop, Square::A4, _) => 325,
-            (PieceType::Bishop, Square::B4, _) => 340,
-            (PieceType::Bishop, Square::C4, _) => 341,
-            (PieceType::Bishop, Square::D4, _) => 345,
-            (PieceType::Bishop, Square::E4, _) => 345,
-            (PieceType::Bishop, Square::F4, _) => 341,
-            (PieceType::Bishop, Square::G4, _) => 340,
-            (PieceType::Bishop, Square::H4, _) => 325,
-            (PieceType::Bishop, Square::A5, _) => 325,
-            (PieceType::Bishop, Square::B5, _) => 340,
-            (PieceType::Bishop, Square::C5, _) => 341,
-            (PieceType::Bishop, Square::D5, _) => 345,
-            (PieceType::Bishop, Square::E5, _) => 345,
-            (PieceType::Bishop, Square::F5, _) => 341,
-            (PieceType::Bishop, Square::G5, _) => 340,
-            (PieceType::Bishop, Square::H5, _) => 325,
-            (PieceType::Bishop, Square::A6, _) => 325,
-            (PieceType::Bishop, Square::B6, _) => 336,
-            (PieceType::Bishop, Square::C6, _) => 337,
-            (PieceType::Bishop, Square::D6, _) => 341,
-            (PieceType::Bishop, Square::E6, _) => 341,
-            (PieceType::Bishop, Square::F6, _) => 337,
-            (PieceType::Bishop, Square::G6, _) => 336,
-            (PieceType::Bishop, Square::H6, _) => 325,
-            (PieceType::Bishop, Square::A7, _) => 325,
-            (PieceType::Bishop, Square::B7, _) => 335,
-            (PieceType::Bishop, Square::C7, _) => 336,
-            (PieceType::Bishop, Square::D7, _) => 340,
-            (PieceType::Bishop, Square::E7, _) => 340,
-            (PieceType::Bishop, Square::F7, _) => 336,
-            (PieceType::Bishop, Square::G7, _) => 335,
-            (PieceType::Bishop, Square::H7, _) => 325,
-            (PieceType::Bishop, Square::A8, _) => 315,
-            (PieceType::Bishop, Square::B8, _) => 325,
-            (PieceType::Bishop, Square::C8, _) => 325,
-            (PieceType::Bishop, Square::D8, _) => 325,
-            (PieceType::Bishop, Square::E8, _) => 325,
-            (PieceType::Bishop, Square::F8, _) => 325,
-            (PieceType::Bishop, Square::G8, _) => 325,
-            (PieceType::Bishop, Square::H8, _) => 315,
-            (PieceType::Knight, Square::A1, _) => 250,
-            (PieceType::Knight, Square::B1, _) => 265,
-            (PieceType::Knight, Square::C1, _) => 280,
-            (PieceType::Knight, Square::D1, _) => 280,
-            (PieceType::Knight, Square::E1, _) => 280,
-            (PieceType::Knight, Square::F1, _) => 280,
-            (PieceType::Knight, Square::G1, _) => 265,
-            (PieceType::Knight, Square::H1, _) => 250,
-            (PieceType::Knight, Square::A2, _) => 280,
-            (PieceType::Knight, Square::B2, _) => 295,
-            (PieceType::Knight, Square::C2, _) => 315,
-            (PieceType::Knight, Square::D2, _) => 325,
-            (PieceType::Knight, Square::E2, _) => 325,
-            (PieceType::Knight, Square::F2, _) => 315,
-            (PieceType::Knight, Square::G2, _) => 295,
-            (PieceType::Knight, Square::H2, _) => 280,
-            (PieceType::Knight, Square::A3, _) => 280,
-            (PieceType::Knight, Square::B3, _) => 295,
-            (PieceType::Knight, Square::C3, _) => 315,
-            (PieceType::Knight, Square::D3, _) => 325,
-            (PieceType::Knight, Square::E3, _) => 325,
-            (PieceType::Knight, Square::F3, _) => 315,
-            (PieceType::Knight, Square::G3, _) => 295,
-            (PieceType::Knight, Square::H3, _) => 280,
-            (PieceType::Knight, Square::A4, _) => 280,
-            (PieceType::Knight, Square::B4, _) => 305,
-            (PieceType::Knight, Square::C4, _) => 335,
-            (PieceType::Knight, Square::D4, _) => 345,
-            (PieceType::Knight, Square::E4, _) => 345,
-            (PieceType::Knight, Square::F4, _) => 335,
-            (PieceType::Knight, Square::G4, _) => 305,
-            (PieceType::Knight, Square::H4, _) => 280,
-            (PieceType::Knight, Square::A5, _) => 280,
-            (PieceType::Knight, Square::B5, _) => 305,
-            (PieceType::Knight, Square::C5, _) => 335,
-            (PieceType::Knight, Square::D5, _) => 345,
-            (PieceType::Knight, Square::E5, _) => 345,
-            (PieceType::Knight, Square::F5, _) => 335,
-            (PieceType::Knight, Square::G5, _) => 305,
-            (PieceType::Knight, Square::H5, _) => 280,
-            (PieceType::Knight, Square::A6, _) => 280,
-            (PieceType::Knight, Square::B6, _) => 305,
-            (PieceType::Knight, Square::C6, _) => 335,
-            (PieceType::Knight, Square::D6, _) => 345,
-            (PieceType::Knight, Square::E6, _) => 345,
-            (PieceType::Knight, Square::F6, _) => 335,
-            (PieceType::Knight, Square::G6, _) => 305,
-            (PieceType::Knight, Square::H6, _) => 280,
-            (PieceType::Knight, Square::A7, _) => 280,
-            (PieceType::Knight, Square::B7, _) => 295,
-            (PieceType::Knight, Square::C7, _) => 315,
-            (PieceType::Knight, Square::D7, _) => 325,
-            (PieceType::Knight, Square::E7, _) => 325,
-            (PieceType::Knight, Square::F7, _) => 315,
-            (PieceType::Knight, Square::G7, _) => 295,
-            (PieceType::Knight, Square::H7, _) => 280,
-            (PieceType::Knight, Square::A8, _) => 280,
-            (PieceType::Knight, Square::B8, _) => 295,
-            (PieceType::Knight, Square::C8, _) => 310,
-            (PieceType::Knight, Square::D8, _) => 310,
-            (PieceType::Knight, Square::E8, _) => 310,
-            (PieceType::Knight, Square::F8, _) => 310,
-            (PieceType::Knight, Square::G8, _) => 295,
-            (PieceType::Knight, Square::H8, _) => 280,            
-            (PieceType::Pawn, Square::A1, _) => 90,
-            (PieceType::Pawn, Square::B1, _) => 90,
-            (PieceType::Pawn, Square::C1, _) => 100,
-            (PieceType::Pawn, Square::D1, _) => 110,
-            (PieceType::Pawn, Square::E1, _) => 110,
-            (PieceType::Pawn, Square::F1, _) => 100,
-            (PieceType::Pawn, Square::G1, _) => 90,
-            (PieceType::Pawn, Square::H1, _) => 90,
-            (PieceType::Pawn, Square::A2, _) => 90,
-            (PieceType::Pawn, Square::B2, _) => 90,
-            (PieceType::Pawn, Square::C2, _) => 100,
-            (PieceType::Pawn, Square::D2, _) => 45,
-            (PieceType::Pawn, Square::E2, _) => 45,
-            (PieceType::Pawn, Square::F2, _) => 100,
-            (PieceType::Pawn, Square::G2, _) => 90,
-            (PieceType::Pawn, Square::H2, _) => 90,
-            (PieceType::Pawn, Square::A3, _) => 90,
-            (PieceType::Pawn, Square::B3, _) => 90,
-            (PieceType::Pawn, Square::C3, _) => 100,
-            (PieceType::Pawn, Square::D3, _) => 110,
-            (PieceType::Pawn, Square::E3, _) => 110,
-            (PieceType::Pawn, Square::F3, _) => 100,
-            (PieceType::Pawn, Square::G3, _) => 90,
-            (PieceType::Pawn, Square::H3, _) => 90,
-            (PieceType::Pawn, Square::A4, _) => 95,
-            (PieceType::Pawn, Square::B4, _) => 95,
-            (PieceType::Pawn, Square::C4, _) => 105,
-            (PieceType::Pawn, Square::D4, _) => 115,
-            (PieceType::Pawn, Square::E4, _) => 115,
-            (PieceType::Pawn, Square::F4, _) => 105,
-            (PieceType::Pawn, Square::G4, _) => 95,
-            (PieceType::Pawn, Square::H4, _) => 95,
-            (PieceType::Pawn, Square::A5, _) => 100,
-            (PieceType::Pawn, Square::B5, _) => 100,
-            (PieceType::Pawn, Square::C5, _) => 110,
-            (PieceType::Pawn, Square::D5, _) => 120,
-            (PieceType::Pawn, Square::E5, _) => 120,
-            (PieceType::Pawn, Square::F5, _) => 110,
-            (PieceType::Pawn, Square::G5, _) => 100,
-            (PieceType::Pawn, Square::H5, _) => 100,
-            (PieceType::Pawn, Square::A6, _) => 105,
-            (PieceType::Pawn, Square::B6, _) => 105,
-            (PieceType::Pawn, Square::C6, _) => 115,
-            (PieceType::Pawn, Square::D6, _) => 125,
-            (PieceType::Pawn, Square::E6, _) => 125,
-            (PieceType::Pawn, Square::F6, _) => 115,
-            (PieceType::Pawn, Square::G6, _) => 105,
-            (PieceType::Pawn, Square::H6, _) => 105,
-            (PieceType::Pawn, Square::A7, _) => 150,
-            (PieceType::Pawn, Square::B7, _) => 150,
-            (PieceType::Pawn, Square::C7, _) => 160,
-            (PieceType::Pawn, Square::D7, _) => 170,
-            (PieceType::Pawn, Square::E7, _) => 170,
-            (PieceType::Pawn, Square::F7, _) => 160,
-            (PieceType::Pawn, Square::G7, _) => 150,
-            (PieceType::Pawn, Square::H7, _) => 150,
-            (PieceType::Pawn, Square::A8, _) => 90,
-            (PieceType::Pawn, Square::B8, _) => 90,
-            (PieceType::Pawn, Square::C8, _) => 100,
-            (PieceType::Pawn, Square::D8, _) => 110,
-            (PieceType::Pawn, Square::E8, _) => 110,
-            (PieceType::Pawn, Square::F8, _) => 100,
-            (PieceType::Pawn, Square::G8, _) => 90,
-            (PieceType::Pawn, Square::H8, _) => 90,
-            
-            _ => 0
-        }
-    }
-    pub fn to_char(&self) -> char {
-        return match (self.color, self.piece_type) {
-            (Color::White, PieceType::King) => 'k',
-            (Color::White, PieceType::Queen) => 'q',
-            (Color::White, PieceType::Rook) => 'r',
-            (Color::White, PieceType::Bishop) => 'b',
-            (Color::White, PieceType::Knight) => 'n',
-            (Color::White, PieceType::Pawn) => 'p',
-            (Color::Black, PieceType::King) => 'K',
-            (Color::Black, PieceType::Queen) => 'Q',
-            (Color::Black, PieceType::Rook) => 'R',
-            (Color::Black, PieceType::Bishop) => 'B',
-            (Color::Black, PieceType::Knight) => 'N',
-            (Color::Black, PieceType::Pawn) => 'P',
-            _ => '.'
+        if self.promote_type == PieceType::Null {
+            return format!("{}{}", fs, ts);
+        } else {
+            return format!("{}{}{}", fs, ts, self.promote_type.to_char());
         }
     }
 }
@@ -2002,6 +1938,66 @@ impl PieceType {
             PieceType::Knight => 'n',
             PieceType::Pawn => 'p',
             _ => '.'
+        }
+    }
+}
+
+impl Direction {
+    pub fn mirror(&self) -> Direction {
+        return match self {
+            Direction::N => Direction::S,
+            Direction::S => Direction::N,
+            Direction::E => Direction::E,
+            Direction::W => Direction::W,
+            Direction::NE => Direction::SE,
+            Direction::NW => Direction::SW,
+            Direction::SE => Direction::NE,
+            Direction::SW => Direction::NW
+        }
+    }
+
+    pub fn reverse(&self) -> Direction {
+        return match self {
+            Direction::N => Direction::S,
+            Direction::S => Direction::N,
+            Direction::E => Direction::W,
+            Direction::W => Direction::E,
+            Direction::NE => Direction::SW,
+            Direction::NW => Direction::SE,
+            Direction::SE => Direction::NW,
+            Direction::SW => Direction::NE
+        }
+    }
+
+    pub fn rel(&self, c: Color) -> Direction {
+        return if c == Color::White { *self } else { self.mirror() };
+    }
+}
+
+impl KnightHop {
+    pub fn mirror(&self) -> KnightHop {
+        return match self {
+            KnightHop::NNW => KnightHop::SSW,
+            KnightHop::NNE => KnightHop::SSE,
+            KnightHop::NWW => KnightHop::SWW,
+            KnightHop::NEE => KnightHop::SEE,
+            KnightHop::SSW => KnightHop::NNW,
+            KnightHop::SSE => KnightHop::NNE,
+            KnightHop::SWW => KnightHop::NWW,
+            KnightHop::SEE => KnightHop::NEE
+        }
+    }
+
+    pub fn reverse(&self) -> KnightHop {
+        return match self {
+            KnightHop::NNW => KnightHop::SSE,
+            KnightHop::NNE => KnightHop::SSW,
+            KnightHop::NWW => KnightHop::SEE,
+            KnightHop::NEE => KnightHop::SWW,
+            KnightHop::SSW => KnightHop::NNE,
+            KnightHop::SSE => KnightHop::NNW,
+            KnightHop::SWW => KnightHop::NEE,
+            KnightHop::SEE => KnightHop::NWW
         }
     }
 }
