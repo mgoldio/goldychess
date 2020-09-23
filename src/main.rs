@@ -20,7 +20,7 @@ fn main() -> io::Result<()> {
         if line == "quit" {
             break;
         } else if line == "uci" {
-            println!("id name Goldychess v0.1");
+            println!("id name Goldychess v0.2");
             println!("id author Michael Goldstein");
             println!("uciok");
         } else if line == "isready" {
@@ -111,18 +111,30 @@ fn main() -> io::Result<()> {
                         "showboard" => {
                             pos.pretty_print();
                         },
+                        "showallpiecehistory" => {
+                            for i in 0..16 {
+                                let ptr = (pos.all_ptr + i) % 16;
+                                println!("\nall_piece_history[{}]", ptr);
+                                bitboard::bitboard_pretty_print(pos.all_piece_history[ptr]);
+                            }
+                        }
+                        "printboard" => {
+                            println!("{:?}", pos);
+                        },
                         "color" => {
                             println!("{:?}", pos.turn);
                         },
                         "showbitboards" => {
-                            println!("White K/Q/R/B/N/P:");
+                            println!("White A/K/Q/R/B/N/P:");
+                            println!("{:016X}", pos.white_bitboard_pieces.all);
                             println!("{:016X}", pos.white_bitboard_pieces.king);
                             println!("{:016X}", pos.white_bitboard_pieces.queens);
                             println!("{:016X}", pos.white_bitboard_pieces.rooks);
                             println!("{:016X}", pos.white_bitboard_pieces.bishops);
                             println!("{:016X}", pos.white_bitboard_pieces.knights);
                             println!("{:016X}", pos.white_bitboard_pieces.pawns);
-                            println!("Black K/Q/R/B/N/P:");
+                            println!("Black A/K/Q/R/B/N/P:");
+                            println!("{:016X}", pos.black_bitboard_pieces.all);
                             println!("{:016X}", pos.black_bitboard_pieces.king);
                             println!("{:016X}", pos.black_bitboard_pieces.queens);
                             println!("{:016X}", pos.black_bitboard_pieces.rooks);

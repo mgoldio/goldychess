@@ -7,9 +7,11 @@ use crate::types::{Direction, KnightHop, Color, GamePhase};
 // types, enums, structs
 
 pub type Bitboard = u64;
+pub type Bitrank = u8;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Pieces {
+    pub all : Bitboard,
     pub king: Bitboard,
     pub queens: Bitboard,
     pub rooks: Bitboard,
@@ -19,6 +21,8 @@ pub struct Pieces {
 }
 
 // constants
+
+pub const EMPTY_BITRANK: Bitrank = 0u8;
 
 pub const FILE_A: Bitboard = 0x0101010101010101u64;
 pub const FILE_B: Bitboard = 0x0202020202020202u64;
@@ -132,6 +136,7 @@ const SEE_MASK: Bitboard = !(FILE_G | FILE_H | RANK_1);
 // const SE_MASK: Bitboard = !(FILE_H | RANK_1);
 
 pub const WHITE_START: Pieces = Pieces {
+    all: (RANK_1 | RANK_2),
     king: SQUARE_E1,
     queens: SQUARE_D1,
     rooks: (SQUARE_A1 | SQUARE_H1),
@@ -141,6 +146,7 @@ pub const WHITE_START: Pieces = Pieces {
 };
 
 pub const BLACK_START: Pieces = Pieces {
+    all: (RANK_7 | RANK_8),
     king: SQUARE_E8,
     queens: SQUARE_D8,
     rooks: (SQUARE_A8 | SQUARE_H8),
@@ -240,6 +246,7 @@ pub fn get_bitboard_rel(b: Bitboard, c: Color) -> Bitboard {
 
 pub fn flip_bitboard_pieces(p: Pieces) -> Pieces {
     return Pieces {
+        all: flip_bitboard(p.all),
         king: flip_bitboard(p.king),
         queens: flip_bitboard(p.queens),
         rooks: flip_bitboard(p.rooks),
@@ -373,4 +380,54 @@ pub fn get_pieces_material_value(p: Pieces, g: GamePhase) -> i32 {
     }
 
     return eval;
+}
+
+pub fn bitboard_pretty_print(b: Bitboard) {
+    let mut chars: [char; 64] = ['.'; 64];
+    for i in 0..64 {
+        if (b & (0x1 << i)) != 0 {
+            chars[i] = '*';
+        }
+    }
+    print!("8   ");
+    for i in 56..64 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n7   ");
+    for i in 48..56 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n6   ");
+    for i in 40..48 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n5   ");
+    for i in 32..40 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n4   ");
+    for i in 24..32 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n3   ");
+    for i in 16..24 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n2   ");
+    for i in 8..16 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    print!("\n1   ");
+    for i in 0..8 {
+        let c = chars[i];
+        print!("{} ", c);
+    }
+    println!("\n\n    A B C D E F G H");
 }

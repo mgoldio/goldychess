@@ -1,9 +1,10 @@
 use crate::types;
-use crate::types::{Direction, Piece, Color, PieceType, Square, Rank, File, CastlingRights, Board, Move, GamePhase};
+use crate::types::{Direction, Color, PieceType, Square, Rank, File, CastlingRights, Board, Move, GamePhase};
 use crate::bitboard;
 use crate::utils;
 use crate::move_search;
 
+pub const EVAL_DRAW: i32 = 0;
 pub const EVAL_MATE: i32 = 1_000_000;
 
 pub const KING_EVAL: [i32; 64] = [
@@ -96,6 +97,10 @@ pub fn eval_move(b: &Board, m: Move, depth: i32) -> i32 {
 pub fn eval_move_max(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) -> i32 {
     let board = utils::apply_move(b, m);
 
+    if is_threefold_repetition(b) {
+        return EVAL_DRAW;
+    }
+
     if rem_depth == 0 {
         return eval_pos_quick(&board);
     }
@@ -104,10 +109,10 @@ pub fn eval_move_max(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
 
     if next_moves.len() == 0 {
         let test_board = utils::apply_null_move(&board);
-        if move_search::test_pmoves(&test_board) {
-            // test_pmoves returns true if there are no king captures
+        if move_search::test_pmove_valid(&test_board) {
+            // test_pmove_valid returns true if there are no king captures
             // in this case, that means we're stalemated
-            return 0;
+            return EVAL_DRAW;
         } else {
             // else we've checkmated
             // to make it prefer slower mates, add in the "rem_depth"
@@ -132,6 +137,10 @@ pub fn eval_move_max(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
 pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) -> i32 {
     let board = utils::apply_move(b, m);
 
+    if is_threefold_repetition(b) {
+        return EVAL_DRAW;
+    }
+
     if rem_depth == 0 {
         return eval_pos_quick(&board);
     }
@@ -140,10 +149,10 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
 
     if next_moves.len() == 0 {
         let test_board = utils::apply_null_move(&board);
-        if move_search::test_pmoves(&test_board) {
-            // test_pmoves returns true if there are no king captures
+        if move_search::test_pmove_valid(&test_board) {
+            // test_pmove_valid returns true if there are no king captures
             // in this case, that means we're stalemated
-            return 0;
+            return EVAL_DRAW;
         } else {
             // else we've checkmated
             // to make it prefer quicker mates, add in the "rem_depth"
@@ -165,9 +174,23 @@ pub fn eval_move_min(b: &Board, m: Move, rem_depth: i32, alpha: i32, beta: i32) 
     return new_beta;
 }
 
+fn is_threefold_repetition(b: &Board) -> bool {
+    // check for threefold repetition
+    // this method is imperfect but so is this engine :)
+    // it's good enough for now
+    let mut rep_count = 0;
+    let prev_all_piece = b.all_piece_history[(b.all_ptr-1) % 16];
+    for i in 0usize..16usize {
+        if b.all_piece_history[i] == prev_all_piece {
+            rep_count = rep_count+1;
+        }
+    }
+    return rep_count >= 3;
+}
+
 fn eval_pos_quick(b: &Board) -> i32 {
-    let mut white_eval = eval_pos_quick_color(b, Color::White);
-    let mut black_eval = eval_pos_quick_color(b, Color::Black);
+    let white_eval = eval_pos_quick_color(b, Color::White);
+    let black_eval = eval_pos_quick_color(b, Color::Black);
 
     return white_eval - black_eval;
 }
